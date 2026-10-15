@@ -26,6 +26,8 @@ import {
   X,
   Compass,
   FileSpreadsheet,
+  KeyRound,
+  ShieldCheck,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -408,6 +410,34 @@ export default function Layout() {
               </div>
             )}
           </div>
+
+          {/* ADMINISTRAÇÃO & INTEGRAÇÕES */}
+          <div className="space-y-1">
+            <span className="px-3 text-[10px] font-bold uppercase tracking-wider text-[#5A6D5A]">
+              Administração
+            </span>
+            <NavLink
+              to="/integracoes"
+              className={({ isActive }) =>
+                `flex items-center justify-between gap-2.5 px-3 py-2 rounded-lg font-medium transition-all ${
+                  isActive
+                    ? 'bg-[#E8F5E9] text-[#1B5E20]'
+                    : 'text-[#5A6D5A] hover:bg-neutral-100 hover:text-[#1A2E1A]'
+                }`
+              }
+            >
+              <div className="flex items-center gap-2.5">
+                <KeyRound className="w-4 h-4 text-[#1B5E20]" />
+                <span className="text-sm">Integração & API</span>
+              </div>
+              <Badge
+                variant="outline"
+                className="text-[9px] px-1.5 py-0 border-emerald-600 text-emerald-700 bg-emerald-50"
+              >
+                D2 Toledo
+              </Badge>
+            </NavLink>
+          </div>
         </div>
 
         {/* Rodapé Usuário */}
@@ -698,6 +728,18 @@ export default function Layout() {
                   className="block px-3 py-1 text-xs text-[#5A6D5A]"
                 >
                   Usuários
+                </NavLink>
+              </div>
+
+              <div className="space-y-1">
+                <span className="px-3 text-[10px] font-bold uppercase text-[#5A6D5A]">
+                  Administração
+                </span>
+                <NavLink
+                  to="/integracoes"
+                  className="block px-3 py-1 text-xs font-semibold text-[#1B5E20]"
+                >
+                  Integração & API (D2 Toledo)
                 </NavLink>
               </div>
             </div>

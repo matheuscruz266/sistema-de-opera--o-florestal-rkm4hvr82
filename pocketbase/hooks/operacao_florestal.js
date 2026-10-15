@@ -313,3 +313,456 @@ onRecordDeleteRequest((e) => {
   }
   return e.next()
 }, 'inventario_pilha')
+
+// ==============================================================================
+// ENDPOINT DE INGESTÃO DE DADOS - PICADOR BRF TOLEDO (D2) E APP DE CAMPO
+// Autenticação: Header Authorization: Bearer <API_KEY> ou X-API-Key: <API_KEY>
+// ATENÇÃO: Todas as funções auxiliares são declaradas inline nos callbacks
+// ==============================================================================
+
+// Rota de Ingestão de Produção D2 (Picador BRF Toledo)
+routerAdd('POST', '/backend/v1/ingestao/d2', (e) => {
+  const gravarLog = (
+    credencial,
+    origemNome,
+    endpoint,
+    ipOrigem,
+    totalRecebidos,
+    totalAceitos,
+    totalRejeitados,
+    status,
+    msgErro,
+    detalhes,
+  ) => {
+    try {
+      const logsCol = e.app.findCollectionByNameOrId('integracao_logs')
+      const logRec = new Record(logsCol)
+      if (credencial && credencial.id) {
+        logRec.set('credencial_id', credencial.id)
+      }
+      logRec.set(
+        'origem_nome',
+        origemNome || (credencial ? credencial.getString('nome') : 'Desconhecido'),
+      )
+      logRec.set('endpoint', endpoint || '/backend/v1/ingestao/d2')
+      logRec.set('ip_origem', ipOrigem || '')
+      logRec.set('timestamp_evento', new Date().toISOString())
+      logRec.set('registros_recebidos', totalRecebidos || 0)
+      logRec.set('registros_aceitos', totalAceitos || 0)
+      logRec.set('registros_rejeitados', totalRejeitados || 0)
+      logRec.set('status', status || 'erro')
+      logRec.set('mensagem_erro', msgErro || '')
+      logRec.set(
+        'detalhes_json',
+        typeof detalhes === 'string' ? detalhes : JSON.stringify(detalhes || {}),
+      )
+      e.app.save(logRec)
+
+      if (credencial && credencial.id) {
+        credencial.set('ultimo_uso', new Date().toISOString())
+        e.app.save(credencial)
+      }
+    } catch (err) {
+      console.log('Falha ao gravar log de ingestao:', err)
+    }
+  }
+
+  const validarAuth = () => {
+    const headerAuth = e.request.header.get('Authorization') || ''
+    const headerApiKey = e.request.header.get('X-API-Key') || ''
+    let key = ''
+
+    if (headerApiKey && headerApiKey.trim()) {
+      key = headerApiKey.trim()
+    } else if (headerAuth.startsWith('Bearer ')) {
+      key = headerAuth.substring(7).trim()
+    } else if (headerAuth.trim()) {
+      key = headerAuth.trim()
+    }
+
+    if (!key) {
+      return {
+        autenticado: false,
+        erro: 'Chave de API não informada no header (esperado X-API-Key ou Authorization: Bearer <chave>)',
+      }
+    }
+
+    try {
+      const creds = e.app.findRecordsByFilter(
+        'integracao_credenciais',
+        `api_key = '${key}'`,
+        '',
+        1,
+        0,
+      )
+      if (creds.length === 0) {
+        return { autenticado: false, erro: 'Chave de API inválida' }
+      }
+      const c = creds[0]
+      if (!c.getBool('is_ativa')) {
+        return { autenticado: false, credencial: c, erro: 'Chave de API inativa ou suspensa' }
+      }
+      return { autenticado: true, credencial: c }
+    } catch (err) {
+      return { autenticado: false, erro: 'Erro interno ao validar credencial: ' + err }
+    }
+  }
+
+  const clientIp = e.remoteIP()
+  const auth = validarAuth()
+
+  if (!auth.autenticado) {
+    gravarLog(
+      auth.credencial || null,
+      auth.credencial ? auth.credencial.getString('nome') : 'Origem Não Autenticada',
+      '/backend/v1/ingestao/d2',
+      clientIp,
+      0,
+      0,
+      0,
+      'rejeitado',
+      auth.erro,
+      { ip: clientIp, rota: '/backend/v1/ingestao/d2' },
+    )
+    return e.json(401, {
+      sucesso: false,
+      erro: auth.erro,
+      instrucoes:
+        'Informe sua chave no header Authorization: Bearer <API_KEY> ou X-API-Key: <API_KEY>',
+    })
+  }
+
+  const cred = auth.credencial
+  let rawBody
+  try {
+    rawBody = e.requestInfo().body || {}
+  } catch (_) {
+    rawBody = {}
+  }
+
+  // O payload pode vir como { dados: [...] } ou diretamente como um array [ ... ] ou um objeto único
+  let itens = []
+  if (Array.isArray(rawBody)) {
+    itens = rawBody
+  } else if (
+    Array.isArray(rawBody.itens) ||
+    Array.isArray(rawBody.dados) ||
+    Array.isArray(rawBody.producao)
+  ) {
+    itens = rawBody.itens || rawBody.dados || rawBody.producao
+  } else if (rawBody && typeof rawBody === 'object' && Object.keys(rawBody).length > 0) {
+    itens = [rawBody]
+  }
+
+  if (itens.length === 0) {
+    gravarLog(
+      cred,
+      cred.getString('nome'),
+      '/backend/v1/ingestao/d2',
+      clientIp,
+      0,
+      0,
+      0,
+      'erro',
+      'Payload vazio ou formato incompatível. Esperado JSON com objeto ou lista de registros.',
+      rawBody,
+    )
+    return e.json(400, {
+      sucesso: false,
+      erro: 'Nenhum registro de produção encontrado no payload.',
+    })
+  }
+
+  const picadorCol = e.app.findCollectionByNameOrId('historico_picador')
+  const pilhasCol = e.app.findCollectionByNameOrId('pilhas')
+  const caminhoesCol = e.app.findCollectionByNameOrId('caminhoes')
+  const convCavacoCol = e.app.findCollectionByNameOrId('conversao_sr_cavaco')
+
+  // Obtem conversao de cavaco vigente padrão se necessária
+  let defaultConvCavacoId = ''
+  try {
+    const vigentes = e.app.findRecordsByFilter(
+      'conversao_sr_cavaco',
+      'is_vigente = true',
+      '-created',
+      1,
+      0,
+    )
+    if (vigentes.length > 0) {
+      defaultConvCavacoId = vigentes[0].id
+    }
+  } catch (_) {}
+
+  // Obtem pilha ativa padrão de toras/mista se o payload não especificar
+  let defaultPilhaId = ''
+  try {
+    const pilhas = e.app.findRecordsByFilter('pilhas', "status = 'ativa'", '-created', 1, 0)
+    if (pilhas.length > 0) {
+      defaultPilhaId = pilhas[0].id
+    }
+  } catch (_) {}
+
+  // Obtem caminhão padrão se não informado
+  let defaultCaminhaoId = ''
+  try {
+    const cams = e.app.findRecordsByFilter('caminhoes', "status = 'ativo'", 'placa', 1, 0)
+    if (cams.length > 0) {
+      defaultCaminhaoId = cams[0].id
+    }
+  } catch (_) {}
+
+  let aceitos = 0
+  let rejeitados = 0
+  const detalhesItens = []
+
+  for (let i = 0; i < itens.length; i++) {
+    const item = itens[i]
+    const idx = i + 1
+
+    // Validações básicas de campos essenciais
+    // Nota Fiscal ou Identificador de Lote/Expedição (chave de unicidade e rastreabilidade)
+    let notaFiscal = (
+      item.nota_fiscal ||
+      item.notaFiscal ||
+      item.nf ||
+      item.id_producao ||
+      item.numero_ticket ||
+      item.ticket ||
+      ''
+    )
+      .toString()
+      .trim()
+
+    const dataHora = (
+      item.data_hora_expedicao ||
+      item.data_hora ||
+      item.timestamp ||
+      item.data ||
+      new Date().toISOString()
+    ).toString()
+
+    const volumeCavaco = Number(
+      item.volume_cavaco_m3 ?? item.volume_cavaco ?? item.volume_m3 ?? item.volume ?? 0,
+    )
+
+    const pesoCavaco =
+      item.peso_cavaco_t != null
+        ? Number(item.peso_cavaco_t)
+        : item.peso_t != null
+          ? Number(item.peso_t)
+          : item.peso_kg != null
+            ? Number(item.peso_kg) / 1000
+            : null
+
+    // Fator de consumo de tora: por padrão, ~1 m³ cavaco consome ~0.35-0.45 m³ de tora sólida, ou usa valor enviado
+    let volumeTora =
+      item.volume_tora_consumido_m3 != null
+        ? Number(item.volume_tora_consumido_m3)
+        : Number((volumeCavaco * 0.4).toFixed(2))
+
+    if (!notaFiscal) {
+      // Gera chave determinística baseada em data + volume + index para garantir rastreabilidade
+      notaFiscal = 'D2-AUT-' + dataHora.replace(/[^0-9]/g, '').slice(0, 14) + '-' + idx
+    }
+
+    if (volumeCavaco <= 0) {
+      rejeitados++
+      detalhesItens.push({
+        indice: idx,
+        nota_fiscal: notaFiscal,
+        status: 'rejeitado',
+        motivo: 'Volume de cavaco deve ser maior que 0 m³',
+      })
+      continue
+    }
+
+    // Idempotência: Se a nota fiscal já foi registrada, trata como duplicada e aceita sem duplicar
+    try {
+      const duplicados = e.app.findRecordsByFilter(
+        'historico_picador',
+        `nota_fiscal = '${notaFiscal}'`,
+        '',
+        1,
+        0,
+      )
+      if (duplicados.length > 0) {
+        aceitos++
+        detalhesItens.push({
+          indice: idx,
+          nota_fiscal: notaFiscal,
+          status: 'ignorado_idempotente',
+          id_existente: duplicados[0].id,
+          mensagem: 'Registro já processado anteriormente (idempotência preservada)',
+        })
+        continue
+      }
+    } catch (_) {}
+
+    // Resolução de Pilha
+    let pilhaId = defaultPilhaId
+    if (item.pilha_origem_id || item.pilha_id) {
+      pilhaId = (item.pilha_origem_id || item.pilha_id).toString()
+    } else if (item.pilha_codigo) {
+      try {
+        const pRec = e.app.findFirstRecordByData('pilhas', 'codigo', item.pilha_codigo)
+        pilhaId = pRec.id
+      } catch (_) {}
+    }
+
+    // Resolução de Caminhão
+    let caminhaoId = defaultCaminhaoId
+    if (item.caminhao_id) {
+      caminhaoId = item.caminhao_id.toString()
+    } else if (item.placa) {
+      try {
+        const cRec = e.app.findFirstRecordByData(
+          'caminhoes',
+          'placa',
+          item.placa.trim().toUpperCase(),
+        )
+        caminhaoId = cRec.id
+      } catch (_) {}
+    }
+
+    // Resolução de Conversão Cavaco
+    let convCavacoId = defaultConvCavacoId
+    if (item.conversao_cavaco_id) {
+      convCavacoId = item.conversao_cavaco_id.toString()
+    }
+
+    try {
+      const novoPicador = new Record(picadorCol)
+      novoPicador.set('nota_fiscal', notaFiscal)
+      novoPicador.set('data_hora_expedicao', dataHora)
+      novoPicador.set('volume_cavaco_m3', volumeCavaco)
+      if (pesoCavaco != null && !isNaN(pesoCavaco)) {
+        novoPicador.set('peso_cavaco_t', Number(pesoCavaco.toFixed(2)))
+      }
+      novoPicador.set('volume_tora_consumido_m3', volumeTora)
+      novoPicador.set('cliente', (item.cliente || 'BRF Toledo — D2 Ingestão').toString())
+      if (item.umidade_perc != null) {
+        novoPicador.set('umidade_perc', Number(item.umidade_perc))
+      }
+      novoPicador.set(
+        'operador_nome',
+        (item.operador_nome || item.operador || 'Integração D2 Automação').toString(),
+      )
+      if (pilhaId) novoPicador.set('pilha_origem_id', pilhaId)
+      if (caminhaoId) novoPicador.set('caminhao_id', caminhaoId)
+      if (convCavacoId) novoPicador.set('conversao_cavaco_id', convCavacoId)
+
+      e.app.save(novoPicador)
+
+      aceitos++
+      detalhesItens.push({
+        indice: idx,
+        nota_fiscal: notaFiscal,
+        status: 'aceito',
+        id_registro: novoPicador.id,
+        volume_cavaco_m3: volumeCavaco,
+      })
+    } catch (saveErr) {
+      rejeitados++
+      detalhesItens.push({
+        indice: idx,
+        nota_fiscal: notaFiscal,
+        status: 'erro_salvar',
+        motivo: '' + saveErr,
+      })
+    }
+  }
+
+  const statusGeral = rejeitados === 0 ? 'sucesso' : aceitos > 0 ? 'parcial' : 'erro'
+  const msgResumo = `Processados: ${itens.length}. Aceitos: ${aceitos}, Rejeitados: ${rejeitados}.`
+
+  gravarLog(
+    cred,
+    cred.getString('nome'),
+    '/backend/v1/ingestao/d2',
+    clientIp,
+    itens.length,
+    aceitos,
+    rejeitados,
+    statusGeral,
+    rejeitados > 0 ? msgResumo : '',
+    detalhesItens,
+  )
+
+  const httpCode = statusGeral === 'erro' ? 400 : statusGeral === 'parcial' ? 207 : 200
+
+  return e.json(httpCode, {
+    sucesso: aceitos > 0,
+    status: statusGeral,
+    mensagem: msgResumo,
+    recebidos: itens.length,
+    aceitos: aceitos,
+    rejeitados: rejeitados,
+    itens: detalhesItens,
+    timestamp: new Date().toISOString(),
+  })
+})
+
+// Rota para testar e verificar status da integração / conectividade
+routerAdd('GET', '/backend/v1/ingestao/status', (e) => {
+  const headerAuth = e.request.header.get('Authorization') || ''
+  const headerApiKey = e.request.header.get('X-API-Key') || ''
+  let key = ''
+
+  if (headerApiKey && headerApiKey.trim()) {
+    key = headerApiKey.trim()
+  } else if (headerAuth.startsWith('Bearer ')) {
+    key = headerAuth.substring(7).trim()
+  } else if (headerAuth.trim()) {
+    key = headerAuth.trim()
+  }
+
+  if (!key) {
+    return e.json(401, {
+      autenticado: false,
+      erro: 'Chave de API não informada no header (esperado X-API-Key ou Authorization: Bearer <chave>)',
+    })
+  }
+
+  let cred = null
+  try {
+    const creds = e.app.findRecordsByFilter(
+      'integracao_credenciais',
+      `api_key = '${key}'`,
+      '',
+      1,
+      0,
+    )
+    if (creds.length === 0) {
+      return e.json(401, {
+        autenticado: false,
+        erro: 'Chave de API inválida',
+      })
+    }
+    cred = creds[0]
+    if (!cred.getBool('is_ativa')) {
+      return e.json(401, {
+        autenticado: false,
+        erro: 'Chave de API inativa ou suspensa',
+      })
+    }
+  } catch (err) {
+    return e.json(500, {
+      autenticado: false,
+      erro: 'Erro interno ao validar credencial: ' + err,
+    })
+  }
+
+  return e.json(200, {
+    autenticado: true,
+    integracao: {
+      id: cred.id,
+      nome: cred.getString('nome'),
+      tipo: cred.getString('tipo'),
+      is_ativa: cred.getBool('is_ativa'),
+      ultimo_uso: cred.getString('ultimo_uso'),
+    },
+    servidor_timestamp: new Date().toISOString(),
+    status: 'online',
+    versao: '1.1-florestal',
+  })
+})

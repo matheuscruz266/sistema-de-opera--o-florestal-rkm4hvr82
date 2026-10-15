@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-15T18:55:09.239Z",
+  "generatedAt": "2026-10-15T19:19:17.870Z",
   "collections": [
     {
       "name": "users",
@@ -1627,6 +1627,174 @@
       ],
       "indexes": [
         "CREATE INDEX idx_hist_alerta_data ON conciliacao_divergencias_hist (alerta_id, created ASC)"
+      ]
+    },
+    {
+      "name": "integracao_credenciais",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.id != '' && @request.auth.papel = 'admin'",
+        "update": "@request.auth.id != '' && @request.auth.papel = 'admin'",
+        "delete": "@request.auth.id != '' && @request.auth.papel = 'admin'"
+      },
+      "fields": [
+        {
+          "name": "nome",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "tipo",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["picador_d2", "app_campo", "balanca_terceiros", "outro"]
+        },
+        {
+          "name": "api_key",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "is_ativa",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "ultimo_uso",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "descricao",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": [
+        "CREATE UNIQUE INDEX idx_integracao_cred_key ON integracao_credenciais (api_key)",
+        "CREATE INDEX idx_integracao_cred_tipo ON integracao_credenciais (tipo)"
+      ]
+    },
+    {
+      "name": "integracao_logs",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "",
+        "update": "@request.auth.id != '' && @request.auth.papel = 'admin'",
+        "delete": "@request.auth.id != '' && @request.auth.papel = 'admin'"
+      },
+      "fields": [
+        {
+          "name": "credencial_id",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "integracao_credenciais"
+        },
+        {
+          "name": "origem_nome",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "endpoint",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "ip_origem",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "timestamp_evento",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "registros_recebidos",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "registros_aceitos",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "registros_rejeitados",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "status",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["sucesso", "parcial", "erro", "rejeitado"]
+        },
+        {
+          "name": "mensagem_erro",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "detalhes_json",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX idx_integracao_logs_data ON integracao_logs (timestamp_evento DESC)",
+        "CREATE INDEX idx_integracao_logs_status ON integracao_logs (status)",
+        "CREATE INDEX idx_integracao_logs_cred ON integracao_logs (credencial_id)"
       ]
     }
   ]

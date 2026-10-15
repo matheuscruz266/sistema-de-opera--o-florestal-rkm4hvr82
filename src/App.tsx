@@ -40,6 +40,9 @@ import ConciliacaoPage from './pages/conciliacao/Conciliacao'
 // Núcleo E: Rastreabilidade Completa
 import RastreabilidadePage from './pages/rastreabilidade/Rastreabilidade'
 
+// Integrações de Dados & Ingestão API (Picador D2 & App de Campo)
+import IntegracoesPage from './pages/integracoes/Integracoes'
+
 export function App() {
   return (
     <Router>
@@ -81,6 +84,9 @@ export function App() {
             <Route path="/cadastros/pilhas" element={<PilhasPage />} />
             <Route path="/cadastros/motivos" element={<MotivosPage />} />
             <Route path="/cadastros/usuarios" element={<UsuariosPage />} />
+
+            {/* Administração & Integrações */}
+            <Route path="/integracoes" element={<IntegracoesPage />} />
           </Route>
 
           {/* Rota 404 */}

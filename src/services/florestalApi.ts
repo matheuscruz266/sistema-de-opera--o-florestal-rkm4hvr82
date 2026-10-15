@@ -20,6 +20,10 @@ import {
   ConciliacaoAjuste,
   ConciliacaoDivergenciaHist,
   UserRecord,
+  IntegracaoCredencial,
+  IntegracaoLog,
+  IngestaoD2ItemPayload,
+  IngestaoD2Response,
 } from '@/types/florestal'
 
 export const apiService = {
@@ -394,5 +398,128 @@ export const apiService = {
     data: Partial<ConciliacaoAjuste>,
   ): Promise<ConciliacaoAjuste> {
     return await pb.collection('conciliacao_ajustes').update<ConciliacaoAjuste>(id, data)
+  },
+
+  // ==========================================
+  // Integrações de Dados & Ingestão API
+  // ==========================================
+  async getIntegracoes(): Promise<IntegracaoCredencial[]> {
+    return await pb
+      .collection('integracao_credenciais')
+      .getFullList<IntegracaoCredencial>({ sort: '-created' })
+  },
+
+  async createIntegracao(data: {
+    nome: string
+    tipo: 'picador_d2' | 'app_campo' | 'balanca_terceiros' | 'outro'
+    descricao?: string
+    api_key?: string
+  }): Promise<IntegracaoCredencial> {
+    // Se não informada chave, gera aleatória segura com prefixo sof_
+    const randomSuffix = Array.from(crypto.getRandomValues(new Uint8Array(18)))
+      .map((b) => b.toString(36))
+      .join('')
+      .slice(0, 24)
+    const apiKey =
+      data.api_key || `sof_live_${data.tipo === 'picador_d2' ? 'd2' : 'api'}_${randomSuffix}`
+
+    return await pb.collection('integracao_credenciais').create<IntegracaoCredencial>({
+      nome: data.nome,
+      tipo: data.tipo,
+      api_key: apiKey,
+      is_ativa: true,
+      descricao: data.descricao || '',
+    })
+  },
+
+  async updateIntegracao(
+    id: string,
+    data: Partial<IntegracaoCredencial>,
+  ): Promise<IntegracaoCredencial> {
+    return await pb.collection('integracao_credenciais').update<IntegracaoCredencial>(id, data)
+  },
+
+  async toggleIntegracaoAtiva(id: string, is_ativa: boolean): Promise<IntegracaoCredencial> {
+    return await pb
+      .collection('integracao_credenciais')
+      .update<IntegracaoCredencial>(id, { is_ativa })
+  },
+
+  async deleteIntegracao(id: string): Promise<boolean> {
+    return await pb.collection('integracao_credenciais').delete(id)
+  },
+
+  async getLogsIngestao(filtro?: {
+    credencialId?: string
+    status?: string
+    limite?: number
+    page?: number
+  }): Promise<{ items: IntegracaoLog[]; totalItems: number; totalPages: number }> {
+    const filters: string[] = []
+    if (filtro?.credencialId && filtro.credencialId !== 'todas') {
+      filters.push(`credencial_id = '${filtro.credencialId}'`)
+    }
+    if (filtro?.status && filtro.status !== 'todos') {
+      filters.push(`status = '${filtro.status}'`)
+    }
+    const filterStr = filters.join(' && ')
+    const page = filtro?.page || 1
+    const perPage = filtro?.limite || 20
+
+    const res = await pb.collection('integracao_logs').getList<IntegracaoLog>(page, perPage, {
+      filter: filterStr,
+      sort: '-timestamp_evento',
+      expand: 'credencial_id',
+    })
+
+    return {
+      items: res.items,
+      totalItems: res.totalItems,
+      totalPages: res.totalPages,
+    }
+  },
+
+  // Testar conectividade do endpoint via SDK send
+  async testarConectividadeApiKey(apiKey: string): Promise<{
+    autenticado: boolean
+    integracao?: {
+      id: string
+      nome: string
+      tipo: string
+      is_ativa: boolean
+      ultimo_uso?: string
+    }
+    servidor_timestamp?: string
+    status?: string
+    erro?: string
+  }> {
+    try {
+      const res = await pb.send('/backend/v1/ingestao/status', {
+        headers: {
+          'X-API-Key': apiKey,
+        },
+      })
+      return res
+    } catch (err: any) {
+      return {
+        autenticado: false,
+        erro: err?.data?.erro || err?.message || 'Falha ao conectar com o endpoint de status',
+      }
+    }
+  },
+
+  // Simular/Enviar Ingestão manual via SDK
+  async enviarIngestaoD2(
+    apiKey: string,
+    payload: IngestaoD2ItemPayload | IngestaoD2ItemPayload[],
+  ): Promise<IngestaoD2Response> {
+    const res = await pb.send<IngestaoD2Response>('/backend/v1/ingestao/d2', {
+      method: 'POST',
+      headers: {
+        'X-API-Key': apiKey,
+      },
+      body: payload,
+    })
+    return res
   },
 }

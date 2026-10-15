@@ -333,3 +333,74 @@ export interface ConciliacaoDivergenciaHist {
   created?: string
   updated?: string
 }
+
+export type TipoIntegracao = 'picador_d2' | 'app_campo' | 'balanca_terceiros' | 'outro'
+
+export interface IntegracaoCredencial {
+  id: string
+  nome: string
+  tipo: TipoIntegracao
+  api_key: string
+  is_ativa: boolean
+  ultimo_uso?: string
+  descricao?: string
+  created?: string
+  updated?: string
+}
+
+export type StatusIngestaoLog = 'sucesso' | 'parcial' | 'erro' | 'rejeitado'
+
+export interface IntegracaoLog {
+  id: string
+  credencial_id?: string
+  origem_nome: string
+  endpoint: string
+  ip_origem?: string
+  timestamp_evento: string
+  registros_recebidos: number
+  registros_aceitos: number
+  registros_rejeitados: number
+  status: StatusIngestaoLog
+  mensagem_erro?: string
+  detalhes_json?: string
+  created?: string
+  updated?: string
+  expand?: {
+    credencial_id?: IntegracaoCredencial
+  }
+}
+
+export interface IngestaoD2ItemPayload {
+  nota_fiscal?: string
+  data_hora_expedicao?: string
+  volume_cavaco_m3: number
+  peso_cavaco_t?: number
+  volume_tora_consumido_m3?: number
+  pilha_codigo?: string
+  pilha_origem_id?: string
+  caminhao_id?: string
+  placa?: string
+  conversao_cavaco_id?: string
+  cliente?: string
+  umidade_perc?: number
+  operador_nome?: string
+}
+
+export interface IngestaoD2Response {
+  sucesso: boolean
+  status: 'sucesso' | 'parcial' | 'erro'
+  mensagem: string
+  recebidos: number
+  aceitos: number
+  rejeitados: number
+  itens: Array<{
+    indice: number
+    nota_fiscal: string
+    status: string
+    id_registro?: string
+    volume_cavaco_m3?: number
+    motivo?: string
+    mensagem?: string
+  }>
+  timestamp: string
+}
