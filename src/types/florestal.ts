@@ -402,5 +402,71 @@ export interface IngestaoD2Response {
     motivo?: string
     mensagem?: string
   }>
-  timestamp: string
+  timestamp?: string
+}
+
+export interface GoogleSheetsConfigRecord {
+  id: string
+  nome: string
+  spreadsheet_id: string
+  sheet_range?: string
+  client_email?: string
+  project_id?: string
+  private_key?: string
+  is_ativa: boolean
+  sincronizacao_automatica: boolean
+  intervalo_minutos?: number
+  ultima_sincronizacao?: string
+  linhas_ingeridas_total?: number
+  ultimo_status?: 'sucesso' | 'erro' | 'parcial' | 'pendente' | string
+  ultimo_erro?: string
+  created?: string
+  updated?: string
+}
+
+export interface GoogleServiceAccountKey {
+  type: string
+  project_id: string
+  private_key_id?: string
+  private_key: string
+  client_email: string
+  client_id?: string
+  auth_uri?: string
+  token_uri?: string
+  auth_provider_x509_cert_url?: string
+  client_x509_cert_url?: string
+  universe_domain?: string
+}
+
+export interface GoogleSheetsTestResponse {
+  sucesso: boolean
+  planilha_id?: string
+  range?: string
+  linhas_detectadas?: number
+  colunas_detectadas?: number
+  amostra_cabecalho?: string[]
+  mensagem?: string
+  erro?: string
+  instrucao?: string
+}
+
+export interface GoogleSheetsSyncResponse {
+  sucesso: boolean
+  status: 'sucesso' | 'parcial' | 'erro'
+  mensagem: string
+  linhas_lidas?: number
+  registros_processados?: number
+  aceitos: number
+  rejeitados: number
+  itens: Array<{
+    indice: number
+    nota_fiscal: string
+    status: string
+    id_registro?: string
+    volume_cavaco_m3?: number
+    motivo?: string
+    mensagem?: string
+  }>
+  erro?: string
+  instrucao?: string
 }

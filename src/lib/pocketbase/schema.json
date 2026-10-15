@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-15T19:19:17.870Z",
+  "generatedAt": "2026-10-15T19:32:12.259Z",
   "collections": [
     {
       "name": "users",
@@ -1796,6 +1796,112 @@
         "CREATE INDEX idx_integracao_logs_status ON integracao_logs (status)",
         "CREATE INDEX idx_integracao_logs_cred ON integracao_logs (credencial_id)"
       ]
+    },
+    {
+      "name": "google_sheets_config",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != '' && @request.auth.papel = 'admin'",
+        "view": "@request.auth.id != '' && @request.auth.papel = 'admin'",
+        "create": "@request.auth.id != '' && @request.auth.papel = 'admin'",
+        "update": "@request.auth.id != '' && @request.auth.papel = 'admin'",
+        "delete": "@request.auth.id != '' && @request.auth.papel = 'admin'"
+      },
+      "fields": [
+        {
+          "name": "nome",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "spreadsheet_id",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "sheet_range",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "client_email",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "project_id",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "private_key",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "is_ativa",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "sincronizacao_automatica",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "intervalo_minutos",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "ultima_sincronizacao",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "linhas_ingeridas_total",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "ultimo_status",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "ultimo_erro",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": ["CREATE INDEX idx_sheets_cfg_ativa ON google_sheets_config (is_ativa)"]
     }
   ]
 }

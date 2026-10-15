@@ -53,8 +53,11 @@ import {
   Send,
   Building2,
   Trash2,
+  FileSpreadsheet,
 } from 'lucide-react'
 import { toast } from 'sonner'
+import { GoogleSheetsD2Section } from './GoogleSheetsD2Section'
+import { GoogleSheetsConfigRecord } from '@/types/florestal'
 
 export default function IntegracoesPage() {
   const { user } = useAuth()
@@ -62,6 +65,9 @@ export default function IntegracoesPage() {
 
   // PocketBase Base URL para documentação real
   const backendBaseUrl = (import.meta.env.VITE_POCKETBASE_URL as string) || window.location.origin
+
+  // Google Sheets Config
+  const [sheetsConfig, setSheetsConfig] = useState<GoogleSheetsConfigRecord | null>(null)
 
   // Dados
   const [credenciais, setCredenciais] = useState<IntegracaoCredencial[]>([])
@@ -116,6 +122,16 @@ export default function IntegracoesPage() {
   const [simPilhaId, setSimPilhaId] = useState('')
   const [simCaminhaoId, setSimCaminhaoId] = useState('')
   const [enviandoSimulacao, setEnviandoSimulacao] = useState(false)
+
+  // Carregar configuração do Google Sheets
+  const loadSheetsConfig = async () => {
+    try {
+      const cfg = await apiService.getGoogleSheetsConfig()
+      setSheetsConfig(cfg)
+    } catch (err: any) {
+      console.error(err)
+    }
+  }
 
   // Carregar dados principais
   const loadCredenciais = async () => {
@@ -172,7 +188,7 @@ export default function IntegracoesPage() {
   useEffect(() => {
     const init = async () => {
       setLoading(true)
-      await Promise.all([loadCredenciais(), loadLogs(1), loadAuxData()])
+      await Promise.all([loadSheetsConfig(), loadCredenciais(), loadLogs(1), loadAuxData()])
       setLoading(false)
     }
     init()
@@ -190,12 +206,43 @@ export default function IntegracoesPage() {
   // Análise de situação da integração D2 (Picador BRF Toledo)
   const situacaoD2 = useMemo(() => {
     const credD2 = credenciais.find((c) => c.tipo === 'picador_d2')
-    if (!credD2) {
+    const sheetsAtivo = sheetsConfig && sheetsConfig.is_ativa
+
+    // Prioriza o status da Planilha Google Sheets se configurada
+    if (sheetsConfig) {
+      if (!sheetsConfig.is_ativa) {
+        return {
+          status: 'inativa',
+          label: 'Planilha Sheets Desativada',
+          badgeClass: 'bg-neutral-200 text-neutral-700 border-neutral-400',
+          descricao: 'A conexão com o Google Sheets da D2 Toledo está desativada.',
+          tempoUso: sheetsConfig.ultima_sincronizacao || null,
+        }
+      }
+      if (sheetsConfig.ultima_sincronizacao) {
+        return {
+          status: sheetsConfig.ultimo_status === 'erro' ? 'erros_recentes' : 'ok',
+          label:
+            sheetsConfig.ultimo_status === 'erro'
+              ? 'Atenção — Erro Sheets'
+              : 'Google Sheets Sincronizado',
+          badgeClass:
+            sheetsConfig.ultimo_status === 'erro'
+              ? 'bg-rose-100 text-rose-800 border-rose-300'
+              : 'bg-emerald-100 text-emerald-800 border-emerald-300',
+          descricao: `Planilha Google ID: ${sheetsConfig.spreadsheet_id.slice(0, 12)}... (${sheetsConfig.linhas_ingeridas_total || 0} registros ingeridos).`,
+          tempoUso: sheetsConfig.ultima_sincronizacao,
+        }
+      }
+    }
+
+    if (!credD2 && !sheetsAtivo) {
       return {
         status: 'nao_configurada',
-        label: 'Não Configurada',
+        label: 'Aguardando Configuração',
         badgeClass: 'bg-neutral-100 text-neutral-600 border-neutral-300',
-        descricao: 'Nenhuma credencial cadastrada para o Picador D2 BRF Toledo.',
+        descricao:
+          'Configure a planilha Google Sheets acima para leitura automática dos dados da D2.',
         tempoUso: null,
       }
     }
@@ -566,6 +613,17 @@ export default function IntegracoesPage() {
           )}
         </div>
       </div>
+
+      {/* SEÇÃO 1: CONEXÃO GOOGLE SHEETS D2 (PICADOR BRF TOLEDO) */}
+      <GoogleSheetsD2Section
+        config={sheetsConfig}
+        isAdmin={isAdmin}
+        onConfigUpdated={loadSheetsConfig}
+        onIngestaoSucesso={() => {
+          loadLogs(1)
+          loadCredenciais()
+        }}
+      />
 
       {/* PAINEL: SITUAÇÃO DA INTEGRAÇÃO D2 (PICADOR BRF TOLEDO) */}
       <Card className="border-[#DDE4DE] shadow-xs overflow-hidden">
@@ -1096,15 +1154,67 @@ export default function IntegracoesPage() {
           <Card className="border-[#DDE4DE] shadow-xs">
             <CardHeader className="p-4 border-b border-[#DDE4DE] bg-neutral-50/50">
               <span className="text-xs font-semibold text-[#1A2E1A] block">
-                Guia Técnico de Integração REST (Picador D2 & App de Campo)
+                Guia Técnico de Integração: Leitura Google Sheets (D2 Toledo) & Ingestão REST
               </span>
               <span className="text-[11px] text-[#5A6D5A]">
-                Utilize as instruções abaixo para configurar o PLC/supervisório do picador ou o
-                aplicativo móvel de campo para despachar expedições.
+                Os dados de produção do Picador D2 BRF Toledo são{' '}
+                <strong>PUXADOS diretamente da planilha Google Sheets</strong> via Conta de Serviço.
+                O endpoint REST continua ativo para contingência ou para o aplicativo móvel offline
+                de campo.
               </span>
             </CardHeader>
 
             <CardContent className="p-4 sm:p-6 space-y-6">
+              {/* FLUXO GOOGLE SHEETS D2 EXPLICADO */}
+              <div className="p-4 bg-emerald-50/80 border border-emerald-300 rounded-xl space-y-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-lg bg-[#1B5E20] text-white flex items-center justify-center">
+                    <FileSpreadsheet className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-[#1B5E20]">
+                      Fluxo Real D2 — Leitura Direta de Planilha Google Sheets
+                    </h3>
+                    <p className="text-[11px] text-[#3D523D]">
+                      Alimentação contínua do Picador BRF Toledo sem necessidade de programar
+                      chamadas de API externas
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs text-[#1A2E1A] pt-1">
+                  <div className="p-3 bg-white rounded-lg border border-emerald-200 shadow-2xs space-y-1">
+                    <span className="text-[10px] font-bold uppercase text-[#1B5E20] block">
+                      Passo 1 • Planilha Compartilhada
+                    </span>
+                    <p className="text-[11px] text-[#5A6D5A] leading-relaxed">
+                      A planilha do picador é compartilhada como Leitor com o e-mail da Conta de
+                      Serviço do Google Cloud gerado para a biotecnologia.
+                    </p>
+                  </div>
+
+                  <div className="p-3 bg-white rounded-lg border border-emerald-200 shadow-2xs space-y-1">
+                    <span className="text-[10px] font-bold uppercase text-[#1B5E20] block">
+                      Passo 2 • JWT OAuth2 & Backend
+                    </span>
+                    <p className="text-[11px] text-[#5A6D5A] leading-relaxed">
+                      Ao clicar em "Testar conexão" ou "Sincronizar agora" (e pelo cron a cada 15
+                      min), o backend autentica via JWT RS256 e lê o intervalo especificado.
+                    </p>
+                  </div>
+
+                  <div className="p-3 bg-white rounded-lg border border-emerald-200 shadow-2xs space-y-1">
+                    <span className="text-[10px] font-bold uppercase text-[#1B5E20] block">
+                      Passo 3 • Ingestão & Estoque
+                    </span>
+                    <p className="text-[11px] text-[#5A6D5A] leading-relaxed">
+                      Cada linha vira uma expedição no histórico do picador. Linhas com nota/ticket
+                      já registrados são preservadas por idempotência.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
               {/* ENDPOINT INFO */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 <div className="p-3 bg-neutral-50 rounded-lg border border-[#DDE4DE]">
@@ -1241,22 +1351,24 @@ export default function IntegracoesPage() {
                 </span>
                 <ul className="list-disc pl-4 space-y-1 leading-relaxed text-[#5A6D5A]">
                   <li>
-                    <strong>Idempotência:</strong> A nota fiscal é validada como chave de dedicação.
-                    Reenvios com a mesma nota são identificados como duplicados e aceitos com status{' '}
+                    <strong>Idempotência:</strong> A nota fiscal / número de ticket é validado como
+                    identificador único. Re-leituras da planilha com a mesma nota são identificadas
+                    como duplicadas e marcadas como{' '}
                     <code className="text-emerald-800 font-mono font-bold">
                       ignorado_idempotente
                     </code>
                     , evitando duplicidade no volume do picador.
                   </li>
                   <li>
-                    <strong>Autonomia e Offline:</strong> A D2 Toledo pode acumular tickets offline
-                    e despachar em lote quando a rede restabelecer; o sistema processa
-                    individualmente cada item do lote.
+                    <strong>Conexão Google Sheets vs API REST:</strong> A leitura da planilha é o
+                    canal oficial de alimentação contínua da D2 Toledo. O endpoint POST{' '}
+                    <code className="text-emerald-800 font-mono">/backend/v1/ingestao/d2</code>{' '}
+                    permanece 100% ativo para o aplicativo offline de campo.
                   </li>
                   <li>
-                    <strong>Atualização Automática do Estoque:</strong> Cada expedição aceita
-                    consome automaticamente o volume correspondente de toras na pilha de origem
-                    através dos hooks reativos do backend.
+                    <strong>Segurança da Chave Privada:</strong> O token JWT da conta de serviço
+                    Google é gerado com assinatura RS256 e a chave privada nunca é exposta na tela
+                    após salva.
                   </li>
                 </ul>
               </div>

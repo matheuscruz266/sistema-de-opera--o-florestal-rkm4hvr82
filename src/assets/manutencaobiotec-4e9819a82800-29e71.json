@@ -1,0 +1,13 @@
+{
+  "type": "service_account",
+  "project_id": "manutencaobiotec",
+  "private_key_id": "4e9819a8280097f443f52b54787db10838251c47",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQCykA4is9NXHYD2\n78TC3a1/cog7sS3NjiaNe0z/kNKWLbQxjhdqDdBiBhyg5Z3wWnHnYQcyMxAHpvCe\nQmUvFloGrL6OrEfd3xVtkhiYj/MncczXe1BrmkOc2KLhrTX2goZn1X95FnftE4tj\nbSDuIiTeOrh9R5j6kWNOXMlnv0boVUvHfxp/jvwBVsjO8FWEGU+lAIeAi6Tsdv4e\n3iioB7H/Bhht3fjwe0OVz3dkTc/Z13wlOIy7DcB8rDIgcml36gOkKxeeSEPZOuaM\ngYaqa/sXWdBWtkuAduJi1JOCy4Shj2RmHG+SnhWdanMNuWkuXbrOVb/OQfSMLNqx\nj03a6N97AgMBAAECggEAB09GsjH6rVQbsurRewlYcGFaZVh/9QG5ifd/CUPpnank\n+KsF7LAAafrbvNRu2OeC8S4I0uEXP2ZHRFtDHsst8pxWDVYid66JsdtrXqzJ5Jal\nLuRb6u5nj9Soek+SaB3OGGhmLalMoyu2fDf77fOqNF9irQeQzMpwg8U1niXM5nbX\nJx5vkvPqkl95kIPZDNoADv2iC+qt4kYfYL6HNQRg98phWQ25vsJP02qN05ooYdvh\nXo19rqs2bHJ8uUGP/hdtXpIoFcD3jIogwKuDnzW49B1oq28eW1JXoYKCYHz4GG1Z\n5aEUrcilkADKAcHB1BV5iAenCFUIceRTkF/yt9R2NQKBgQDtqu5dvMszaLuFbRiv\naVSBX3ZIKEZp3Brhj8y/hUSgaPw0zTfP6v5RB8KM9ubDXUyZBnQYhKxqVRj2NHI7\nw4T0MrjlHQJgg42tf3T/6ksybanCOkU3cdstHqDoUaunET8VU0ES3EwOuMp7bejj\nmnFaNiQ6z0dykEL+qH04RrN5HwKBgQDAVgQ+GXCzbsJ8x3mCYcoUEsX+X7k8De0K\n1s1ZFbJrSDR/YK2G4sfw0McHMqwOUFZaDbdXxwiJuwaZKEON3/Zb9Jm3/ggbAzMe\ner4HvS9R7SHNXd+UnIdbI5YLDxbvg0s0Z7yHC2fEEVwjNixzx+5SjRtkRJUQbHgW\n6D6W7ZXiJQKBgQCelseV7wuck09F2iV1rxA/f8a6oX1S2Bdr2fui9Ld1Xnikdye9\n6q2mvknYrEwRoukg10iSr70o+v28FAUB0haeqFXuNCxI4J+iXQFiXyGsVbbILv/O\n3n+FHQH747tpsL1qanJqtmteC3q5X/7eGUl4C9ajE3s2fALoUN+1tJ+/uwKBgQC/\nVFIAHHqaZHIggqaDZxgJA+vl8f9omEnX4HqCRi0ov7lJhTjZ17sh+e4jYOr7ijt8\ndeyO6zW5HU2hCga5mbOPIjHQcGpLxNETXvKu7CmojAZ2Lw383gFgTnQyKB6ewLMN\nPKy0gkoFJ2fKt1ddDeQsRqabBgZrQhvsXbf1l/7j6QKBgH/iSPt8biRAEODr+yNW\n+FstShIeEs9NvYyto991/tzyBwXZ/zL+rozPNsPls9BpPWJETQ+QFKeTAis3lTLD\nJWvupicbus9onecfkvxeWhyVz4pKz9A7BpNNuXk4/O4jhFabWX8ya08S0VgdNvT5\nH0z08xD9591k4tDpGXqqjjvX\n-----END PRIVATE KEY-----\n",
+  "client_email": "consultapaulo@manutencaobiotec.iam.gserviceaccount.com",
+  "client_id": "114685698001278133534",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/consultapaulo%40manutencaobiotec.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}
