@@ -583,7 +583,7 @@ export const GoogleSheetsD2Section: React.FC<GoogleSheetsD2SectionProps> = ({
                   Adicione o e-mail da Conta de Serviço:
                   <div className="mt-1 p-1.5 bg-white border border-emerald-300 rounded font-mono text-[11px] text-emerald-950 select-all font-semibold break-all">
                     {config?.client_email ||
-                      'consultapaulo@manutencaobiotec.iam.gserviceaccount.com'}
+                      'sua-service-account@seu-projeto.iam.gserviceaccount.com'}
                   </div>
                 </li>
                 <li>
