@@ -1,0 +1,1633 @@
+{
+  "generatedAt": "2026-10-15T18:33:49.918Z",
+  "collections": [
+    {
+      "name": "users",
+      "type": "auth",
+      "apiRules": {
+        "list": "id = @request.auth.id",
+        "view": "id = @request.auth.id",
+        "create": "",
+        "update": "id = @request.auth.id",
+        "delete": "id = @request.auth.id"
+      },
+      "fields": [
+        {
+          "name": "name",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "avatar",
+          "type": "file",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        },
+        {
+          "name": "papel",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": ["admin", "operador", "conferente"]
+        },
+        {
+          "name": "status",
+          "type": "bool",
+          "required": false,
+          "system": false
+        }
+      ],
+      "indexes": [
+        "CREATE UNIQUE INDEX `idx_tokenKey__pb_users_auth_` ON `users` (`tokenKey`)",
+        "CREATE UNIQUE INDEX `idx_email__pb_users_auth_` ON `users` (`email`) WHERE `email` != ''"
+      ]
+    },
+    {
+      "name": "fazendas",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.id != ''",
+        "update": "@request.auth.id != ''",
+        "delete": "@request.auth.id != ''"
+      },
+      "fields": [
+        {
+          "name": "nome",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "codigo",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "uf",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "cidade",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "area_total",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "area_plantada",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "status",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["ativa", "inativa"]
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": ["CREATE UNIQUE INDEX idx_fazendas_codigo ON fazendas (codigo)"]
+    },
+    {
+      "name": "talhoes",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.id != ''",
+        "update": "@request.auth.id != ''",
+        "delete": "@request.auth.id != ''"
+      },
+      "fields": [
+        {
+          "name": "talhao",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "fazenda_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "fazendas"
+        },
+        {
+          "name": "area_ha",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "especie",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "data_plantio",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "status",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["ativo", "cultivo", "colheita", "concluido"]
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": ["CREATE INDEX idx_talhoes_fazenda ON talhoes (fazenda_id)"]
+    },
+    {
+      "name": "maquinas",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.id != ''",
+        "update": "@request.auth.id != ''",
+        "delete": "@request.auth.id != ''"
+      },
+      "fields": [
+        {
+          "name": "id_maquina",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "equipamento",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "tipo",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["feller", "skidder", "picador", "colhedora", "outros"]
+        },
+        {
+          "name": "bt",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "usuario_responsavel",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "fazenda_id",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "fazendas"
+        },
+        {
+          "name": "status",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["ativa", "manutencao", "inativa"]
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": ["CREATE UNIQUE INDEX idx_maquinas_id_maquina ON maquinas (id_maquina)"]
+    },
+    {
+      "name": "caminhoes",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.id != ''",
+        "update": "@request.auth.id != ''",
+        "delete": "@request.auth.id != ''"
+      },
+      "fields": [
+        {
+          "name": "placa",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "modelo",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "capacidade_m3",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "renavam",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "status",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["ativo", "manutencao", "inativo"]
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": ["CREATE UNIQUE INDEX idx_caminhoes_placa ON caminhoes (placa)"]
+    },
+    {
+      "name": "caminhao_baldeio",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.id != ''",
+        "update": "@request.auth.id != ''",
+        "delete": "@request.auth.id != ''"
+      },
+      "fields": [
+        {
+          "name": "placa_baldeio",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "modelo",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "capacidade_m3",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "tipo_carreta",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "status",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["ativo", "manutencao", "inativo"]
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": ["CREATE UNIQUE INDEX idx_cam_baldeio_placa ON caminhao_baldeio (placa_baldeio)"]
+    },
+    {
+      "name": "pilhas",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.id != ''",
+        "update": "@request.auth.id != ''",
+        "delete": "@request.auth.id != ''"
+      },
+      "fields": [
+        {
+          "name": "codigo",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "nome",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "fazenda_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "fazendas"
+        },
+        {
+          "name": "talhao_id",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "talhoes"
+        },
+        {
+          "name": "is_mista",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "produto",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["tora", "cavaco", "misto"]
+        },
+        {
+          "name": "volume_atual_m3",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "status",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["ativa", "inativa", "em_consumo", "concluida"]
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": ["CREATE UNIQUE INDEX idx_pilhas_codigo ON pilhas (codigo)"]
+    },
+    {
+      "name": "motivos",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.id != ''",
+        "update": "@request.auth.id != ''",
+        "delete": "@request.auth.id != ''"
+      },
+      "fields": [
+        {
+          "name": "id_motivo",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "equipamento",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "motivo",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "categoria",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": [
+            "rejeicao_tora",
+            "recusa_cavaco",
+            "parada_maquina",
+            "divergencia_estoque",
+            "outros"
+          ]
+        },
+        {
+          "name": "status",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["ativo", "inativo"]
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": ["CREATE UNIQUE INDEX idx_motivos_id ON motivos (id_motivo)"]
+    },
+    {
+      "name": "conversao_sr_toras",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.id != ''",
+        "update": "@request.auth.id != ''",
+        "delete": "@request.auth.id != ''"
+      },
+      "fields": [
+        {
+          "name": "versao",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "vigencia_inicio",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "vigencia_fim",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "fator_m3_sr",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "fator_t_m3",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "metodo",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "is_vigente",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "observacoes",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": ["CREATE INDEX idx_conv_toras_vigente ON conversao_sr_toras (is_vigente)"]
+    },
+    {
+      "name": "conversao_sr_cavaco",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.id != ''",
+        "update": "@request.auth.id != ''",
+        "delete": "@request.auth.id != ''"
+      },
+      "fields": [
+        {
+          "name": "id_carreta",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "modelo_carreta",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "capacidade_m3",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "fator_t_m3",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "vigencia_inicio",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "vigencia_fim",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "is_vigente",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": ["CREATE UNIQUE INDEX idx_conv_cavaco_carreta ON conversao_sr_cavaco (id_carreta)"]
+    },
+    {
+      "name": "parametros_operacionais",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.id != ''",
+        "update": "@request.auth.id != ''",
+        "delete": "@request.auth.id != ''"
+      },
+      "fields": [
+        {
+          "name": "chave",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "descricao",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "etapa_origem",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "etapa_destino",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "base_comparacao",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "fator_valor",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "unidade",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "versao",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "vigencia_inicio",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "vigencia_fim",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "is_vigente",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "email_alertas",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": [
+        "CREATE UNIQUE INDEX idx_param_chave_versao ON parametros_operacionais (chave, versao)"
+      ]
+    },
+    {
+      "name": "historico_feller",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.id != ''",
+        "update": "@request.auth.id != ''",
+        "delete": "@request.auth.id != ''"
+      },
+      "fields": [
+        {
+          "name": "talhao_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "talhoes"
+        },
+        {
+          "name": "maquina_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "maquinas"
+        },
+        {
+          "name": "data_operacao",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "horas_trabalhadas",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "combustivel_litros",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "arvores_derrubadas",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "observacoes",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": ["CREATE INDEX idx_feller_data ON historico_feller (data_operacao DESC)"]
+    },
+    {
+      "name": "historico_skidder",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.id != ''",
+        "update": "@request.auth.id != ''",
+        "delete": "@request.auth.id != ''"
+      },
+      "fields": [
+        {
+          "name": "talhao_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "talhoes"
+        },
+        {
+          "name": "maquina_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "maquinas"
+        },
+        {
+          "name": "data_operacao",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "horas_trabalhadas",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "combustivel_litros",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "ciclos_arraste",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "observacoes",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": ["CREATE INDEX idx_skidder_data ON historico_skidder (data_operacao DESC)"]
+    },
+    {
+      "name": "historico_baldeio",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.id != ''",
+        "update": "@request.auth.id != ''",
+        "delete": "@request.auth.id != ''"
+      },
+      "fields": [
+        {
+          "name": "conversao_sr_id",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "conversao_sr_toras"
+        },
+        {
+          "name": "caminhao_baldeio_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "caminhao_baldeio"
+        },
+        {
+          "name": "talhao_origem_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "talhoes"
+        },
+        {
+          "name": "pilha_destino_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "pilhas"
+        },
+        {
+          "name": "data_hora_saida",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "data_hora_chegada",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "volume_sr",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "volume_m3_estimado",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "motorista",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "numero_viagem",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "status_baldeio",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["em_transito", "concluido", "cancelado"]
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": ["CREATE INDEX idx_baldeio_data ON historico_baldeio (data_hora_saida DESC)"]
+    },
+    {
+      "name": "historico_descarga",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.id != ''",
+        "update": "@request.auth.id != ''",
+        "delete": "@request.auth.id != ''"
+      },
+      "fields": [
+        {
+          "name": "conversao_sr_id",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "conversao_sr_toras"
+        },
+        {
+          "name": "caminhao_baldeio_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "caminhao_baldeio"
+        },
+        {
+          "name": "pilha_destino_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "pilhas"
+        },
+        {
+          "name": "data_hora_descarga",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "volume_sr",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "volume_m3_calculado",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "peso_bruto_t",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "peso_tara_t",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "peso_liquido_t",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "status_aceite",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["aceito", "rejeitado", "pendente"]
+        },
+        {
+          "name": "motivo_rejeicao",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "conferente_nome",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX idx_descarga_pilha ON historico_descarga (pilha_destino_id, status_aceite)"
+      ]
+    },
+    {
+      "name": "historico_picador",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.id != ''",
+        "update": "@request.auth.id != ''",
+        "delete": "@request.auth.id != ''"
+      },
+      "fields": [
+        {
+          "name": "conversao_cavaco_id",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "conversao_sr_cavaco"
+        },
+        {
+          "name": "caminhao_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "caminhoes"
+        },
+        {
+          "name": "pilha_origem_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "pilhas"
+        },
+        {
+          "name": "nota_fiscal",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "data_hora_expedicao",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "volume_cavaco_m3",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "peso_cavaco_t",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "volume_tora_consumido_m3",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "cliente",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "umidade_perc",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "operador_nome",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": ["CREATE UNIQUE INDEX idx_picador_nota ON historico_picador (nota_fiscal)"]
+    },
+    {
+      "name": "inventario_pilha",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.id != ''",
+        "update": "@request.auth.id != ''",
+        "delete": "@request.auth.id != ''"
+      },
+      "fields": [
+        {
+          "name": "pilha_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "pilhas"
+        },
+        {
+          "name": "talhao_referencia_id",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "talhoes"
+        },
+        {
+          "name": "data_inventario",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "responsavel_nome",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "metodo_escolhido",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["geometrico", "amostragem_diametros"]
+        },
+        {
+          "name": "status_registro",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["rascunho", "oficial", "substituido"]
+        },
+        {
+          "name": "comp_pilha_m",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "alt_media_pilha_m",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "comp_toras_m",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "v_aparente_m3",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "fator_calibracao",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "v_solido_geometrico_m3",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "qtd_toras_amostradas",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "diametro_medio_cm",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "comp_medio_toras_m",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "v_individual_medio_m3",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "v_solido_amostragem_m3",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "volume_oficial_m3",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "justificativa_correcao",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "registro_substituido_id",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "observacoes",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX idx_inv_pilha_data ON inventario_pilha (pilha_id, data_inventario DESC)",
+        "CREATE INDEX idx_inv_status ON inventario_pilha (status_registro)"
+      ]
+    },
+    {
+      "name": "conciliacao_alertas",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.id != ''",
+        "update": "@request.auth.id != ''",
+        "delete": "@request.auth.id != ''"
+      },
+      "fields": [
+        {
+          "name": "pilha_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "pilhas"
+        },
+        {
+          "name": "data_identificacao",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "saldo_calculado_m3",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "inventario_fisico_m3",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "diferenca_m3",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "diferenca_perc",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "limiar_aplicado_perc",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "status",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": [
+            "pendente",
+            "em_investigacao",
+            "ajuste_solicitado",
+            "resolvido",
+            "descartado"
+          ]
+        },
+        {
+          "name": "motivo_divergencia",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "responsavel_investigacao",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": ["CREATE INDEX idx_alertas_pilha_status ON conciliacao_alertas (pilha_id, status)"]
+    },
+    {
+      "name": "conciliacao_ajustes",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.id != ''",
+        "update": "@request.auth.id != ''",
+        "delete": "@request.auth.id != ''"
+      },
+      "fields": [
+        {
+          "name": "alerta_id",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "conciliacao_alertas"
+        },
+        {
+          "name": "pilha_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "pilhas"
+        },
+        {
+          "name": "tipo_ajuste",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["entrada_correcao", "baixa_perda", "recalibracao_metodo", "outros"]
+        },
+        {
+          "name": "volume_ajustado_m3",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "justificativa",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "aprovado_por",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "data_aprovacao",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "status_ajuste",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["pendente_aprovacao", "aprovado", "rejeitado"]
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": ["CREATE INDEX idx_ajustes_pilha ON conciliacao_ajustes (pilha_id, status_ajuste)"]
+    },
+    {
+      "name": "conciliacao_divergencias_hist",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.id != ''",
+        "update": "@request.auth.id != ''",
+        "delete": "@request.auth.id != ''"
+      },
+      "fields": [
+        {
+          "name": "alerta_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "conciliacao_alertas"
+        },
+        {
+          "name": "etapa_evento",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "descricao",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "usuario_nome",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "data_hora",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "dados_adicionais",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX idx_hist_alerta_data ON conciliacao_divergencias_hist (alerta_id, created ASC)"
+      ]
+    }
+  ]
+}
