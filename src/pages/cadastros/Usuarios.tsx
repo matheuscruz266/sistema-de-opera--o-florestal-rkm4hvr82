@@ -44,6 +44,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuth } from '@/context/AuthContext'
+import { getErrorMessage } from '@/lib/pocketbase/errors'
 
 export default function UsuariosPage() {
   const { user: currentUser } = useAuth()
@@ -123,6 +124,7 @@ export default function UsuariosPage() {
           name: name.trim(),
           email: email.trim(),
           password: password || 'Skip@Pass',
+          passwordConfirm: password || 'Skip@Pass',
           papel,
           status: true,
         })
@@ -131,9 +133,9 @@ export default function UsuariosPage() {
 
       setModalOpen(false)
       loadData()
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err)
-      toast.error(err.message || 'Erro ao salvar usuário')
+      toast.error(getErrorMessage(err) || 'Erro ao salvar usuário')
     } finally {
       setSaving(false)
     }

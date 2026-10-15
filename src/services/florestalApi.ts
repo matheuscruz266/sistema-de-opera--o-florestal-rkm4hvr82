@@ -34,7 +34,9 @@ export const apiService = {
   async getUsuarios(): Promise<UserRecord[]> {
     return await pb.collection('users').getFullList<UserRecord>({ sort: 'name' })
   },
-  async createUsuario(data: Partial<UserRecord> & { password?: string }): Promise<UserRecord> {
+  async createUsuario(
+    data: Partial<UserRecord> & { password: string; passwordConfirm: string },
+  ): Promise<UserRecord> {
     return await pb.collection('users').create<UserRecord>(data)
   },
   async updateUsuario(id: string, data: Partial<UserRecord>): Promise<UserRecord> {
