@@ -6,36 +6,49 @@ $expectedRemote = 'https://github.com/matheuscruz266/sistema-de-opera--o-florest
 function Invoke-Git {
   param(
     [Parameter(Mandatory = $true)]
-    [string[]]$Arguments
+    [string[]]$Arguments,
+    [switch]$Capture
   )
 
-  $output = & git -C $repositoryRoot @Arguments 2>&1
-  $exitCode = $LASTEXITCODE
+  $previousErrorActionPreference = $ErrorActionPreference
+  try {
+    $ErrorActionPreference = 'Continue'
+    $output = & git -C $repositoryRoot @Arguments 2>&1
+    $exitCode = $LASTEXITCODE
+  } finally {
+    $ErrorActionPreference = $previousErrorActionPreference
+  }
+
+  if ($exitCode -ne 0) {
+    foreach ($line in $output) {
+      Write-Host $line
+    }
+    throw "git $($Arguments -join ' ') falhou com código $exitCode."
+  }
+
+  if ($Capture) {
+    return $output
+  }
 
   foreach ($line in $output) {
     Write-Host $line
   }
-
-  if ($exitCode -ne 0) {
-    throw "git $($Arguments -join ' ') falhou com código $exitCode."
-  }
-
-  return $output
 }
 
 try {
-  $gitRoot = (@(Invoke-Git @('rev-parse', '--show-toplevel')) -join "`n").Trim()
+  $gitRoot = (@(Invoke-Git @('rev-parse', '--show-toplevel') -Capture)) -join "`n"
+  $gitRoot = $gitRoot.Trim()
   $root = (Resolve-Path -LiteralPath $gitRoot).Path
   if (-not [string]::Equals($root, $repositoryRoot, [StringComparison]::OrdinalIgnoreCase)) {
     throw 'A pasta do workspace não é a raiz do repositório Git.'
   }
 
-  $branch = (@(Invoke-Git @('branch', '--show-current')) -join "`n").Trim()
+  $branch = (@(Invoke-Git @('branch', '--show-current') -Capture) -join "`n").Trim()
   if ($branch -ne 'main') {
     throw "A sincronização automática só é permitida na branch main (branch atual: $branch)."
   }
 
-  $remote = (@(Invoke-Git @('remote', 'get-url', 'origin')) -join "`n").Trim()
+  $remote = (@(Invoke-Git @('remote', 'get-url', 'origin') -Capture) -join "`n").Trim()
   if (-not [string]::Equals($remote, $expectedRemote, [StringComparison]::OrdinalIgnoreCase)) {
     throw "O remoto origin não corresponde ao repositório esperado: $expectedRemote"
   }
@@ -45,7 +58,7 @@ try {
 
   Invoke-Git @('add', '--all')
 
-  $stagedEnvChanges = @(Invoke-Git @('diff', '--cached', '--name-only', '--', '.env'))
+  $stagedEnvChanges = @(Invoke-Git @('diff', '--cached', '--name-only', '--', '.env') -Capture)
   if ($stagedEnvChanges.Count -gt 0) {
     $envFile = Join-Path $repositoryRoot '.env'
     if (Test-Path -LiteralPath $envFile -PathType Leaf) {
@@ -73,14 +86,14 @@ try {
     }
   }
 
-  $stagedChanges = @(Invoke-Git @('diff', '--cached', '--name-only'))
+  $stagedChanges = @(Invoke-Git @('diff', '--cached', '--name-only') -Capture)
   if ($stagedChanges.Count -gt 0) {
     Invoke-Git @('commit', '-m', 'chore: auto-sync local changes')
   }
 
   Invoke-Git @('pull', '--rebase', 'origin', 'main')
 
-  $ahead = (@(Invoke-Git @('rev-list', '--count', 'origin/main..HEAD')) -join "`n").Trim()
+  $ahead = (@(Invoke-Git @('rev-list', '--count', 'origin/main..HEAD') -Capture) -join "`n").Trim()
   if ([int]$ahead -gt 0) {
     Invoke-Git @('push', 'origin', 'main')
   } else {
