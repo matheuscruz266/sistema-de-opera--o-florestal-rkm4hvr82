@@ -38,6 +38,19 @@ npm run dev
 
 Abre a aplicação em modo de desenvolvimento em [http://localhost:5173](http://localhost:5173).
 
+### Sincronização automática com GitHub no VS Code
+
+Ao abrir a pasta do projeto no VS Code, a tarefa **Git: watch and synchronize with GitHub**:
+
+1. Detecta alterações nos arquivos do projeto e sincroniza dois segundos após a última gravação.
+2. Cria um commit `chore: auto-sync local changes` para alterações locais.
+3. Atualiza a branch `main` com `git pull --rebase origin main` e envia os commits pendentes com `git push origin main`.
+4. Consulta novas alterações no GitHub a cada 30 segundos, mesmo quando não há alterações locais.
+
+O workspace precisa estar confiável no VS Code, e o Git deve ter acesso de leitura e escrita ao repositório. Para sincronizar manualmente, execute `npm run git:sync`. Uma sincronização já em andamento nunca é iniciada outra vez em paralelo; alterações feitas enquanto isso são enviadas na execução seguinte. Conflitos de rebase pausam o envio automático para evitar sobrescrever o trabalho de qualquer colaborador. Resolva os conflitos e execute a sincronização manualmente.
+
+O arquivo `.env` continua versionado e é sincronizado como qualquer outro arquivo. Não adicione credenciais ao `.env` se o conteúdo for enviado para um repositório compartilhado.
+
 ### Build
 
 ```bash
