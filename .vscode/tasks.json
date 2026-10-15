@@ -2,16 +2,14 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "Git: synchronize with GitHub",
+      "label": "Git: watch and synchronize with GitHub",
       "type": "process",
-      "command": "powershell.exe",
+      "command": "npm",
       "args": [
-        "-NoProfile",
-        "-ExecutionPolicy",
-        "Bypass",
-        "-File",
-        "${workspaceFolder}\\scripts\\git-auto-sync.ps1"
+        "run",
+        "git:watch"
       ],
+      "isBackground": true,
       "runOptions": {
         "runOn": "folderOpen",
         "instanceLimit": 1
@@ -22,7 +20,17 @@
         "panel": "dedicated",
         "clear": true
       },
-      "problemMatcher": []
+      "problemMatcher": {
+        "owner": "github-auto-sync",
+        "pattern": {
+          "regexp": "^(.*)$"
+        },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": "^GitHub file watcher active",
+          "endsPattern": "^GitHub file watcher stopped"
+        }
+      }
     }
   ]
 }

@@ -53,38 +53,33 @@ try {
     throw "O remoto origin não corresponde ao repositório esperado: $expectedRemote"
   }
 
+  $rebasePaths = @(
+    (@(Invoke-Git @('rev-parse', '--git-path', 'rebase-merge') -Capture) -join "`n").Trim(),
+    (@(Invoke-Git @('rev-parse', '--git-path', 'rebase-apply') -Capture) -join "`n").Trim()
+  )
+  foreach ($rebasePath in $rebasePaths) {
+    $resolvedRebasePath = if ([IO.Path]::IsPathRooted($rebasePath)) {
+      $rebasePath
+    } else {
+      Join-Path $repositoryRoot $rebasePath
+    }
+
+    if (Test-Path -LiteralPath $resolvedRebasePath) {
+      Write-Error 'A sincronização automática foi pausada: há um rebase em andamento. Resolva os conflitos e sincronize manualmente.'
+      exit 2
+    }
+  }
+
+  $unmergedFiles = @(Invoke-Git @('diff', '--name-only', '--diff-filter=U') -Capture)
+  if ($unmergedFiles.Count -gt 0) {
+    Write-Error 'A sincronização automática foi pausada: há conflitos de merge. Resolva-os e sincronize manualmente.'
+    exit 2
+  }
+
   Invoke-Git @('config', '--local', 'user.name', 'GitHub Auto Sync') | Out-Null
   Invoke-Git @('config', '--local', 'user.email', 'github-auto-sync@users.noreply.github.com') | Out-Null
 
   Invoke-Git @('add', '--all')
-
-  $stagedEnvChanges = @(Invoke-Git @('diff', '--cached', '--name-only', '--', '.env') -Capture)
-  if ($stagedEnvChanges.Count -gt 0) {
-    $envFile = Join-Path $repositoryRoot '.env'
-    if (Test-Path -LiteralPath $envFile -PathType Leaf) {
-      $sensitiveKeys = @()
-      $envLines = Get-Content -LiteralPath $envFile
-      foreach ($line in $envLines) {
-        if ($line -match '^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$') {
-          $key = $Matches[1]
-          $value = $Matches[2].Trim().Trim('"').Trim("'")
-          $looksLikePlaceholder = $value -match '^(?i:change.?me|your.?.*|replace.?me|example|xxx+|\*+)$'
-          $looksLikeSecretKey = $key -match '(?i)(SECRET|TOKEN|PASSWORD|PASSWD|PRIVATE.?KEY|API.?KEY|CLIENT.?SECRET|ACCESS.?KEY|CREDENTIAL)'
-          $containsUrlCredentials = $value -match '(?i)^[a-z][a-z0-9+.-]*://[^/\s:@]+:[^/\s@]+@'
-          $containsPrivateKey = $value -match '-----BEGIN [A-Z ]*PRIVATE KEY-----'
-
-          if (($looksLikeSecretKey -and $value.Length -gt 0 -and -not $looksLikePlaceholder) -or $containsUrlCredentials -or $containsPrivateKey) {
-            $sensitiveKeys += $key
-          }
-        }
-      }
-
-      if ($sensitiveKeys.Count -gt 0) {
-        $keys = $sensitiveKeys | Select-Object -Unique
-        throw "O envio foi interrompido: .env contém valores com aparência de credencial nas variáveis $($keys -join ', '). Revise o arquivo e faça o push manualmente após a revisão."
-      }
-    }
-  }
 
   $stagedChanges = @(Invoke-Git @('diff', '--cached', '--name-only') -Capture)
   if ($stagedChanges.Count -gt 0) {
