@@ -79,8 +79,7 @@ export default function Layout() {
           {/* Dashboard Geral */}
           <div>
             <NavLink
-              to="/"
-              end
+              to="/dashboard"
               className={({ isActive }) =>
                 `flex items-center gap-2.5 px-3 py-2 rounded-lg font-medium transition-all ${
                   isActive
@@ -100,7 +99,7 @@ export default function Layout() {
               Operação & Controle
             </span>
             <NavLink
-              to="/inventario"
+              to="/toracerta"
               className={({ isActive }) =>
                 `flex items-center justify-between px-3 py-2 rounded-lg font-medium transition-all ${
                   isActive
@@ -566,7 +565,7 @@ export default function Layout() {
 
             <div className="flex-1 overflow-y-auto p-3 space-y-4 text-xs" onClick={closeMobile}>
               <NavLink
-                to="/"
+                to="/dashboard"
                 className="flex items-center gap-2.5 px-3 py-2 rounded-lg font-medium text-sm text-[#1B5E20] bg-[#E8F5E9]"
               >
                 <LayoutDashboard className="w-4 h-4" />
@@ -578,7 +577,7 @@ export default function Layout() {
                   Operação
                 </span>
                 <NavLink
-                  to="/inventario"
+                  to="/toracerta"
                   className="flex items-center gap-2 px-3 py-1.5 text-sm text-[#1A2E1A]"
                 >
                   <Compass className="w-4 h-4 text-[#FF8F00]" />
