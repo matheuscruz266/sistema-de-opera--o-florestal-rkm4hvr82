@@ -31,6 +31,7 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { FloatingChatBot } from '@/components/FloatingChatBot'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -574,6 +575,9 @@ export default function Layout() {
             Rastreabilidade Florestal • Sem balança própria • Núcleos A+B+C+E
           </span>
         </footer>
+
+        {/* BOTÃO FLUTUANTE DE CHAT COM O AGENTE NATIVO */}
+        <FloatingChatBot />
       </div>
 
       {/* DRAWER MOBILE */}

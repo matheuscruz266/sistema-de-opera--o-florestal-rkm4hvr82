@@ -2810,3 +2810,231 @@ routerAdd('POST', '/backend/v1/admin/purge', (e) => {
     timestamp: new Date().toISOString(),
   })
 })
+
+// ==============================================================================
+// 5. CHAT COM AGENTE NATIVO DO SKIP CLOUD (Apoio - Florestal)
+// Integração oficial via $ai.agent(slug) com persistência por usuário
+// Slug padrão: "apoio-florestal" (configurável via query ou body)
+// ==============================================================================
+
+// 5.1 Rota de Chat Streaming (SSE com $response.stream)
+routerAdd(
+  'POST',
+  '/backend/v1/agent/chat-stream',
+  (e) => {
+    const defaultSlug = 'apoio-florestal'
+    try {
+      const userId = e.auth?.id
+      if (!userId) {
+        return e.json(401, { error: 'Autenticação necessária para conversar com o assistente.' })
+      }
+
+      let body = {}
+      try {
+        body = e.requestInfo().body || {}
+      } catch (_) {}
+
+      const message = (body.message || '').trim()
+      if (!message) {
+        return e.json(400, { error: 'A mensagem não pode estar vazia.' })
+      }
+
+      const agentSlug = (body.agent_slug || defaultSlug).trim()
+      const agent = $ai.agent(agentSlug)
+
+      const conv = agent.getOrCreateConversation({
+        user_id: userId,
+        id: body.conversation_id || null,
+        title: body.title || 'Conversa Operacional',
+      })
+
+      const iter = agent.chat({
+        user_id: userId,
+        conversation_id: conv.id,
+        message: message,
+        stream: true,
+      })
+
+      e.response.header().set('Content-Type', 'text/event-stream')
+      e.response.header().set('Cache-Control', 'no-cache')
+      e.response.header().set('Connection', 'keep-alive')
+      e.response.header().set('X-Conversation-Id', conv.id)
+
+      $response.stream(e, iter)
+    } catch (err) {
+      console.log('Erro no chat stream do agente:', err)
+      if (typeof SkipAiConfigError !== 'undefined' && err instanceof SkipAiConfigError) {
+        return e.json(503, {
+          error: 'Serviço de IA temporariamente indisponível. Tente novamente em instantes.',
+        })
+      }
+      if (typeof SkipAiAgentsError !== 'undefined' && err instanceof SkipAiAgentsError) {
+        const status = err.status || 500
+        return e.json(status, {
+          error:
+            status >= 500
+              ? 'Não foi possível falar com o assistente agora. Tente novamente em instantes.'
+              : err.message,
+        })
+      }
+      if (typeof SkipAiError !== 'undefined' && err instanceof SkipAiError) {
+        const status = err.status || 502
+        return e.json(status, {
+          error: 'Não foi possível falar com o assistente agora. Tente novamente em instantes.',
+        })
+      }
+      return e.json(500, {
+        error: 'Não foi possível falar com o assistente agora. Tente novamente em instantes.',
+      })
+    }
+  },
+  $apis.requireAuth(),
+)
+
+// 5.2 Rota de Chat Síncrono (Fallback padrão JSON)
+routerAdd(
+  'POST',
+  '/backend/v1/agent/chat',
+  (e) => {
+    const defaultSlug = 'apoio-florestal'
+    try {
+      const userId = e.auth?.id
+      if (!userId) {
+        return e.json(401, { error: 'Autenticação necessária para conversar com o assistente.' })
+      }
+
+      let body = {}
+      try {
+        body = e.requestInfo().body || {}
+      } catch (_) {}
+
+      const message = (body.message || '').trim()
+      if (!message) {
+        return e.json(400, { error: 'A mensagem não pode estar vazia.' })
+      }
+
+      const agentSlug = (body.agent_slug || defaultSlug).trim()
+      const agent = $ai.agent(agentSlug)
+
+      const result = agent.chat({
+        user_id: userId,
+        conversation_id: body.conversation_id || null,
+        message: message,
+      })
+
+      return e.json(200, {
+        conversation_id: result.conversation_id,
+        content: result.content,
+        citations: result.citations || [],
+        message_id: result.message_id,
+        iterations: result.iterations || 1,
+      })
+    } catch (err) {
+      console.log('Erro no chat síncrono do agente:', err)
+      if (typeof SkipAiConfigError !== 'undefined' && err instanceof SkipAiConfigError) {
+        return e.json(503, {
+          error: 'Serviço de IA temporariamente indisponível. Tente novamente em instantes.',
+        })
+      }
+      if (typeof SkipAiAgentsError !== 'undefined' && err instanceof SkipAiAgentsError) {
+        const status = err.status || 500
+        return e.json(status, {
+          error:
+            status >= 500
+              ? 'Não foi possível falar com o assistente agora. Tente novamente em instantes.'
+              : err.message,
+        })
+      }
+      if (typeof SkipAiError !== 'undefined' && err instanceof SkipAiError) {
+        const status = err.status || 502
+        return e.json(status, {
+          error: 'Não foi possível falar com o assistente agora. Tente novamente em instantes.',
+        })
+      }
+      return e.json(500, {
+        error: 'Não foi possível falar com o assistente agora. Tente novamente em instantes.',
+      })
+    }
+  },
+  $apis.requireAuth(),
+)
+
+// 5.3 Listar conversas do usuário logado
+routerAdd(
+  'GET',
+  '/backend/v1/agent/conversations',
+  (e) => {
+    const defaultSlug = 'apoio-florestal'
+    try {
+      const userId = e.auth?.id
+      if (!userId) return e.json(401, { error: 'Autenticação necessária.' })
+
+      const agentSlug = (e.requestInfo().query?.agent_slug || defaultSlug).trim()
+      const limit = parseInt(e.requestInfo().query?.limit || '20', 10) || 20
+
+      const result = $ai.agent(agentSlug).listConversations({
+        user_id: userId,
+        limit: limit,
+      })
+
+      return e.json(200, result)
+    } catch (err) {
+      console.log('Erro ao listar conversas do agente:', err)
+      return e.json(500, { error: 'Falha ao buscar histórico de conversas.' })
+    }
+  },
+  $apis.requireAuth(),
+)
+
+// 5.4 Listar mensagens de uma conversa
+routerAdd(
+  'GET',
+  '/backend/v1/agent/conversations/{conversationId}/messages',
+  (e) => {
+    const defaultSlug = 'apoio-florestal'
+    try {
+      const userId = e.auth?.id
+      if (!userId) return e.json(401, { error: 'Autenticação necessária.' })
+
+      const agentSlug = (e.requestInfo().query?.agent_slug || defaultSlug).trim()
+      const conversationId = e.request.pathValue('conversationId')
+      const limit = parseInt(e.requestInfo().query?.limit || '50', 10) || 50
+
+      const result = $ai.agent(agentSlug).listMessages({
+        conversation_id: conversationId,
+        user_id: userId,
+        limit: limit,
+      })
+
+      return e.json(200, result)
+    } catch (err) {
+      console.log('Erro ao listar mensagens do agente:', err)
+      if (typeof SkipAiAgentsError !== 'undefined' && err instanceof SkipAiAgentsError) {
+        const status = err.status || 500
+        return e.json(status, {
+          error: status >= 500 ? 'Conversa não encontrada ou inacessível.' : err.message,
+        })
+      }
+      return e.json(500, { error: 'Falha ao buscar mensagens da conversa.' })
+    }
+  },
+  $apis.requireAuth(),
+)
+
+// 5.5 Info sobre o agente ativo
+routerAdd(
+  'GET',
+  '/backend/v1/agent/info',
+  (e) => {
+    const defaultSlug = 'apoio-florestal'
+    const agentSlug = (e.requestInfo().query?.agent_slug || defaultSlug).trim()
+    return e.json(200, {
+      slug: agentSlug,
+      name: 'Apoio - Florestal',
+      display_title: 'Assistente da Operação Florestal',
+      description:
+        'Copiloto operacional florestal conectado aos dados de fazendas, máquinas, pilhas, baldeio, descarga, picador e conciliação.',
+    })
+  },
+  $apis.requireAuth(),
+)
