@@ -56,7 +56,7 @@ export default function Layout() {
   const closeMobile = () => setMobileMenuOpen(false)
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-[#F5F7F5] text-[#1A2E1A]">
+    <div className="flex h-screen w-full overflow-hidden bg-[#F5F7F5] text-[#1A2E1A]">
       {/* SIDEBAR DESKTOP */}
       <aside className="hidden lg:flex flex-col w-64 bg-white border-r border-[#DDE4DE] shrink-0 select-none shadow-sm">
         {/* Topo / Logo */}

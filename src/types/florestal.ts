@@ -32,7 +32,7 @@ export interface Talhao {
   area_ha?: number
   especie?: string
   data_plantio?: string
-  status: 'ativo' | 'cultivo' | 'colheita' | 'concluido'
+  status: 'ativo' | 'cultivo' | 'colheita' | 'concluido' | 'inativa'
   created?: string
   updated?: string
   expand?: {
@@ -469,4 +469,59 @@ export interface GoogleSheetsSyncResponse {
   }>
   erro?: string
   instrucao?: string
+}
+
+export interface GoogleSheetsImportPreviewSheet {
+  name: string
+  target: string
+  destination: string
+  key: string
+  mapping: string
+  headers: string[]
+  rows: number
+  creates: number
+  updates: number
+  skipped: number
+  errors: number
+  issues: Array<{ row: number; message: string }>
+  catalog: boolean
+  replacementNote: string
+}
+
+export interface GoogleSheetsImportPreview {
+  sucesso: boolean
+  planilha_id: string
+  total_linhas: number
+  novos: number
+  atualizacoes: number
+  ignorados: number
+  erros: number
+  abas: GoogleSheetsImportPreviewSheet[]
+  ordem_importacao: string[]
+  observacao: string
+}
+
+export interface GoogleSheetsImportResult {
+  sucesso: boolean
+  status: 'sucesso' | 'parcial' | 'erro'
+  mensagem: string
+  total: {
+    criados: number
+    atualizados: number
+    ignorados: number
+    rejeitados: number
+    inativados: number
+  }
+  abas: Array<{
+    name: string
+    target: string
+    criados: number
+    atualizados: number
+    ignorados: number
+    rejeitados: number
+    inativados: number
+    issues: Array<{ row: number; message: string }>
+  }>
+  timestamp: string
+  observacao: string
 }

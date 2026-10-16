@@ -215,22 +215,41 @@ export default function IntegracoesPage() {
           status: 'inativa',
           label: 'Planilha Sheets Desativada',
           badgeClass: 'bg-neutral-200 text-neutral-700 border-neutral-400',
-          descricao: 'A conexão com o Google Sheets da D2 Toledo está desativada.',
+          descricao:
+            'A integração Google Sheets está desativada; prévias e importações estão bloqueadas.',
           tempoUso: sheetsConfig.ultima_sincronizacao || null,
+        }
+      }
+      if (!sheetsConfig.ultima_sincronizacao) {
+        return {
+          status: 'aguardando_importacao',
+          label: sheetsConfig.has_credentials
+            ? 'Conectada — aguardando importação'
+            : 'Aguardando credencial',
+          badgeClass: 'bg-amber-100 text-amber-800 border-amber-300',
+          descricao: sheetsConfig.has_credentials
+            ? 'A origem está configurada. Gere a prévia e confirme a importação manualmente; não há execução automática.'
+            : 'Configure uma conta de serviço Google Sheets para iniciar a prévia manual.',
+          tempoUso: null,
         }
       }
       if (sheetsConfig.ultima_sincronizacao) {
         return {
-          status: sheetsConfig.ultimo_status === 'erro' ? 'erros_recentes' : 'ok',
+          status:
+            sheetsConfig.ultimo_status === 'erro' || sheetsConfig.ultimo_status === 'parcial'
+              ? 'erros_recentes'
+              : 'ok',
           label:
             sheetsConfig.ultimo_status === 'erro'
               ? 'Atenção — Erro Sheets'
-              : 'Google Sheets Sincronizado',
+              : sheetsConfig.ultimo_status === 'parcial'
+                ? 'Atenção — Importação parcial'
+                : 'Google Sheets importado',
           badgeClass:
-            sheetsConfig.ultimo_status === 'erro'
+            sheetsConfig.ultimo_status === 'erro' || sheetsConfig.ultimo_status === 'parcial'
               ? 'bg-rose-100 text-rose-800 border-rose-300'
               : 'bg-emerald-100 text-emerald-800 border-emerald-300',
-          descricao: `Planilha Google ID: ${sheetsConfig.spreadsheet_id.slice(0, 12)}... (${sheetsConfig.linhas_ingeridas_total || 0} registros ingeridos).`,
+          descricao: `Última importação manual da planilha Google (${sheetsConfig.linhas_ingeridas_total || 0} novos registros).`,
           tempoUso: sheetsConfig.ultima_sincronizacao,
         }
       }
@@ -242,18 +261,20 @@ export default function IntegracoesPage() {
         label: 'Aguardando Configuração',
         badgeClass: 'bg-neutral-100 text-neutral-600 border-neutral-300',
         descricao:
-          'Configure a planilha Google Sheets acima para leitura automática dos dados da D2.',
+          'Configure a planilha Google Sheets acima para consultar a origem e importar manualmente os dados.',
         tempoUso: null,
       }
     }
 
-    if (!credD2.is_ativa) {
+    if (!credD2 || !credD2.is_ativa) {
       return {
         status: 'inativa',
         label: 'Integração Desativada',
         badgeClass: 'bg-neutral-200 text-neutral-700 border-neutral-400',
-        descricao: 'A chave de API está desativada no sistema.',
-        tempoUso: credD2.ultimo_uso,
+        descricao: credD2
+          ? 'A chave de API REST está desativada no sistema.'
+          : 'Nenhuma origem Google Sheets ou chave de API REST está configurada.',
+        tempoUso: credD2?.ultimo_uso || null,
       }
     }
 
@@ -307,7 +328,7 @@ export default function IntegracoesPage() {
       descricao: 'Endpoint respondendo com sucesso e gravando expedições no estoque.',
       tempoUso: dataRef.toISOString(),
     }
-  }, [credenciais, logs])
+  }, [credenciais, logs, sheetsConfig])
 
   // Ações de Credencial
   const handleToggleAtiva = async (cred: IntegracaoCredencial) => {
@@ -596,8 +617,8 @@ export default function IntegracoesPage() {
             </h1>
           </div>
           <p className="text-sm text-[#5A6D5A] mt-1">
-            Gestão de chaves de API, monitoramento de conectividade da Dashboard D2 (Picador BRF
-            Toledo) e auditoria de eventos recebidos.
+            Importe manualmente as 14 abas do Google Sheets e acompanhe as integrações REST de
+            recebimento e seus eventos.
           </p>
         </div>
 
@@ -614,7 +635,7 @@ export default function IntegracoesPage() {
         </div>
       </div>
 
-      {/* SEÇÃO 1: CONEXÃO GOOGLE SHEETS D2 (PICADOR BRF TOLEDO) */}
+      {/* Importação manual, somente leitura, das abas Google Sheets */}
       <GoogleSheetsD2Section
         config={sheetsConfig}
         isAdmin={isAdmin}
@@ -625,19 +646,17 @@ export default function IntegracoesPage() {
         }}
       />
 
-      {/* PAINEL: SITUAÇÃO DA INTEGRAÇÃO D2 (PICADOR BRF TOLEDO) */}
+      {/* Status do recebimento REST legado, separado da leitura Google Sheets */}
       <Card className="border-[#DDE4DE] shadow-xs overflow-hidden">
         <div className="p-4 sm:p-5 bg-gradient-to-r from-emerald-900 to-[#1B5E20] text-white">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
             <div className="space-y-1.5">
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-200">
-                  Painel de Conectividade Externa
+                  Painel de Recebimento Externo
                 </span>
                 <span className="text-emerald-300">•</span>
-                <span className="text-[11px] text-emerald-200">
-                  Automação Picador D2 BRF Toledo
-                </span>
+                <span className="text-[11px] text-emerald-200">API REST · Picador D2</span>
               </div>
               <h2 className="text-xl font-bold flex items-center gap-2.5">
                 <Radio
@@ -649,7 +668,7 @@ export default function IntegracoesPage() {
                         : 'text-amber-300'
                   }`}
                 />
-                Status da Integração D2: {situacaoD2.label}
+                Status da origem D2: {situacaoD2.label}
               </h2>
               <p className="text-xs text-emerald-100 max-w-2xl leading-relaxed">
                 {situacaoD2.descricao}
@@ -662,7 +681,7 @@ export default function IntegracoesPage() {
                   Última Atividade
                 </span>
                 <span className="font-mono font-semibold">
-                  {situacaoD2.tempoUso ? formatDataHora(situacaoD2.tempoUso) : 'Nenhum envio'}
+                  {situacaoD2.tempoUso ? formatDataHora(situacaoD2.tempoUso) : 'Nenhuma atividade'}
                 </span>
               </div>
 
@@ -681,7 +700,7 @@ export default function IntegracoesPage() {
                 ) : (
                   <>
                     <Activity className="w-3.5 h-3.5 mr-1.5" />
-                    Testar Conexão
+                    Testar API REST
                   </>
                 )}
               </Button>

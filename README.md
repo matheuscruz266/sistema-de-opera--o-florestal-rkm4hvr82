@@ -154,7 +154,23 @@ pnpm build:pocketbase-jwt
 
 Distribua também `pocketbase/hooks/google_jwt.js`,
 `pocketbase/hooks/LICENSE-node-forge.txt` e
-`pocketbase/hooks/operacao_florestal.js` no diretório de hooks do servidor PocketBase.
+`pocketbase/hooks/operacao_florestal.js` e
+`pocketbase/hooks/google_sheets_import.js` no diretório de hooks do servidor PocketBase.
+O PocketBase aplicará a migração `0010_google_sheets_import_destinations.js` ao iniciar.
 
-A sincronização periódica ainda não está disponível; até que o job de importação
-seja implementado, importe os dados pelo botão “Sincronizar Agora” na tela de Integrações.
+Na tela **Integrações → Google Sheets**, um Administrador pode colar o JSON completo de
+uma nova conta de serviço (ou selecionar o arquivo `.json`) e informar o link ou ID da
+planilha. Compartilhe a planilha com o `client_email` da conta de serviço como **Leitor**.
+O hook usa o escopo Google Sheets somente leitura; não envia alterações para a planilha.
+Use uma chave nova e nunca reutilize credenciais expostas em conversas ou arquivos públicos.
+
+O fluxo é manual: conectar e gerar uma prévia das 14 abas, revisar o mapeamento/erros e
+confirmar a importação. Cadastros de referência ausentes na planilha são inativados, não
+apagados. Usuários existentes podem ser atualizados por e-mail, mas usuários não são
+criados e senhas não são alteradas. A aba `Trabalho` e os históricos são atualizados pela
+chave da origem e nunca excluídos. Cadastros base são processados antes de Talhões, Pilhas,
+Trabalho e históricos para resolver relações.
+
+Antes de usar, defina `GOOGLE_SHEETS_ENCRYPTION_KEY` no processo do PocketBase, instale os
+arquivos de hook acima e reinicie o servidor para aplicar as migrações. Nenhuma importação
+real é executada até que um Administrador confirme a prévia.

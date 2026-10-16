@@ -175,6 +175,8 @@ export default function TalhoesPage() {
         return (
           <Badge className="bg-neutral-100 text-neutral-700 border-neutral-300">Concluído</Badge>
         )
+      case 'inativa':
+        return <Badge className="bg-rose-100 text-rose-800 border-rose-300">Inativa</Badge>
       default:
         return <Badge className="bg-emerald-100 text-emerald-800 border-emerald-300">Ativo</Badge>
     }
@@ -384,6 +386,7 @@ export default function TalhoesPage() {
                     <SelectItem value="cultivo">Cultivo</SelectItem>
                     <SelectItem value="colheita">Em Colheita</SelectItem>
                     <SelectItem value="concluido">Concluído</SelectItem>
+                    <SelectItem value="inativa">Inativa</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

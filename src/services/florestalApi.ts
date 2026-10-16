@@ -28,6 +28,8 @@ import {
   GoogleServiceAccountKey,
   GoogleSheetsTestResponse,
   GoogleSheetsSyncResponse,
+  GoogleSheetsImportPreview,
+  GoogleSheetsImportResult,
 } from '@/types/florestal'
 
 export const apiService = {
@@ -594,5 +596,21 @@ export const apiService = {
         instrucao: err?.data?.instrucao,
       }
     }
+  },
+
+  async previsualizarImportacaoGoogleSheets(
+    spreadsheetId: string,
+  ): Promise<GoogleSheetsImportPreview> {
+    return await pb.send<GoogleSheetsImportPreview>('/backend/v1/sheets/importacao/preview', {
+      method: 'POST',
+      body: { spreadsheet_id: spreadsheetId },
+    })
+  },
+
+  async importarGoogleSheets(spreadsheetId: string): Promise<GoogleSheetsImportResult> {
+    return await pb.send<GoogleSheetsImportResult>('/backend/v1/sheets/importacao/importar', {
+      method: 'POST',
+      body: { spreadsheet_id: spreadsheetId },
+    })
   },
 }

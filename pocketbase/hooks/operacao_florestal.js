@@ -1,5 +1,7 @@
 /// <reference path="../pb_data/types.d.ts" />
 
+require(`${__hooks}/google_sheets_import.js`)
+
 // Hook para histórico de descarga - atualiza estoque da pilha destino
 onRecordAfterCreateSuccess((e) => {
   try {
@@ -759,8 +761,7 @@ routerAdd('POST', '/backend/v1/sheets/config', (e) => {
     return e.json(400, { erro: 'Corpo da requisição inválido.' })
   }
 
-  const spreadsheetId =
-    typeof body.spreadsheet_id === 'string' ? body.spreadsheet_id.trim() : ''
+  const spreadsheetId = typeof body.spreadsheet_id === 'string' ? body.spreadsheet_id.trim() : ''
   if (!spreadsheetId) {
     return e.json(400, { erro: 'ID da planilha Google não informado.' })
   }
@@ -789,8 +790,7 @@ routerAdd('POST', '/backend/v1/sheets/config', (e) => {
     const encryptionKey = $os.getenv('GOOGLE_SHEETS_ENCRYPTION_KEY')
     if (encryptionKey.length !== 32) {
       return e.json(500, {
-        erro:
-          'O servidor não está configurado para proteger credenciais do Google. Configure GOOGLE_SHEETS_ENCRYPTION_KEY com 32 caracteres.',
+        erro: 'O servidor não está configurado para proteger credenciais do Google. Configure GOOGLE_SHEETS_ENCRYPTION_KEY com 32 caracteres.',
       })
     }
 
@@ -907,7 +907,10 @@ routerAdd('POST', '/backend/v1/sheets/testar', (e) => {
     )
   } catch (err) {
     console.log('Erro ao preparar autenticação Google Sheets:', err)
-    return e.json(500, { sucesso: false, erro: 'Não foi possível preparar a autenticação do Google.' })
+    return e.json(500, {
+      sucesso: false,
+      erro: 'Não foi possível preparar a autenticação do Google.',
+    })
   }
 
   let directToken
@@ -1498,7 +1501,8 @@ cronAdd('sync_google_sheets_d2', '*/15 * * * *', (app) => {
     const clientEmail = cfg.getString('client_email')
     const encryptionKey = $os.getenv('GOOGLE_SHEETS_ENCRYPTION_KEY')
 
-    if (!spreadsheetId || !encryptedCredential || !clientEmail || encryptionKey.length !== 32) return
+    if (!spreadsheetId || !encryptedCredential || !clientEmail || encryptionKey.length !== 32)
+      return
 
     cfg.set('ultimo_status', 'agendado_ativo')
     app.save(cfg)
