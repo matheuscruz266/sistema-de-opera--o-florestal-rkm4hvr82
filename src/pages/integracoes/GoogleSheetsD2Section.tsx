@@ -47,7 +47,7 @@ export const GoogleSheetsD2Section: React.FC<GoogleSheetsD2SectionProps> = ({
   const [sincronizacaoAutomatica, setSincronizacaoAutomatica] = useState(
     config?.sincronizacao_automatica ?? true,
   )
-  const [isAtiva, setIsAtiva] = useState(config?.is_ativa ?? true)
+  const [isAtiva, setIsAtiva] = useState(Boolean(config?.is_ativa ?? true))
 
   // Estados de ação
   const [salvando, setSalvando] = useState(false)
@@ -70,10 +70,12 @@ export const GoogleSheetsD2Section: React.FC<GoogleSheetsD2SectionProps> = ({
       setSpreadsheetId(config.spreadsheet_id || '')
       setSheetRange(config.sheet_range || 'P1!A:Z')
       setSincronizacaoAutomatica(config.sincronizacao_automatica ?? true)
-      setIsAtiva(config.is_ativa ?? true)
+      setIsAtiva(Boolean(config.is_ativa ?? true))
       if (config.client_email) {
         setSubstituindoChave(false)
       }
+    } else {
+      setIsAtiva(true)
     }
   }, [config])
 

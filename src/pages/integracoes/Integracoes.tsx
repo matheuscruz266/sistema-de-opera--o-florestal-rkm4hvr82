@@ -64,7 +64,9 @@ export default function IntegracoesPage() {
   const isAdmin = user?.papel === 'admin'
 
   // PocketBase Base URL para documentação real
-  const backendBaseUrl = (import.meta.env.VITE_POCKETBASE_URL as string) || window.location.origin
+  const backendBaseUrl =
+    (import.meta.env.VITE_POCKETBASE_URL as string) ||
+    (typeof window !== 'undefined' ? window.location.origin : '')
 
   // Google Sheets Config
   const [sheetsConfig, setSheetsConfig] = useState<GoogleSheetsConfigRecord | null>(null)
@@ -126,25 +128,28 @@ export default function IntegracoesPage() {
   // Carregar configuração do Google Sheets
   const loadSheetsConfig = async () => {
     try {
-      const cfg = await apiService.getGoogleSheetsConfig()
-      setSheetsConfig(cfg)
+      const cfg = await apiService.getGoogleSheetsConfig().catch(() => null)
+      setSheetsConfig(cfg || null)
     } catch (err: any) {
       console.error(err)
+      setSheetsConfig(null)
     }
   }
 
   // Carregar dados principais
   const loadCredenciais = async () => {
     try {
-      const list = await apiService.getIntegracoes()
-      setCredenciais(list)
-      if (list.length > 0 && !credencialSelecionadaId) {
+      const list = await apiService.getIntegracoes().catch(() => [])
+      const listaSegura = Array.isArray(list) ? list : []
+      setCredenciais(listaSegura)
+      if (listaSegura.length > 0 && !credencialSelecionadaId) {
         // Seleciona preferencialmente a D2 Toledo ou a primeira
-        const d2 = list.find((c) => c.tipo === 'picador_d2')
-        setCredencialSelecionadaId(d2 ? d2.id : list[0].id)
+        const d2 = listaSegura.find((c) => c?.tipo === 'picador_d2')
+        setCredencialSelecionadaId(d2 ? d2.id : listaSegura[0]?.id || '')
       }
     } catch (err: any) {
       console.error(err)
+      setCredenciais([])
       toast.error('Erro ao carregar credenciais de integração')
     }
   }
@@ -200,13 +205,14 @@ export default function IntegracoesPage() {
 
   // Credencial ativa selecionada
   const credencialAtiva = useMemo(() => {
-    return credenciais.find((c) => c.id === credencialSelecionadaId) || credenciais[0] || null
+    if (!Array.isArray(credenciais) || credenciais.length === 0) return null
+    return credenciais.find((c) => c?.id === credencialSelecionadaId) || credenciais[0] || null
   }, [credenciais, credencialSelecionadaId])
 
   // Análise de situação da integração D2 (Picador BRF Toledo)
   const situacaoD2 = useMemo(() => {
-    const credD2 = credenciais.find((c) => c.tipo === 'picador_d2')
-    const sheetsAtivo = sheetsConfig && sheetsConfig.is_ativa
+    const credD2 = credenciais?.find((c) => c?.tipo === 'picador_d2')
+    const sheetsAtivo = Boolean(sheetsConfig?.is_ativa)
 
     // Prioriza o status da Planilha Google Sheets se configurada
     if (sheetsConfig) {
@@ -220,6 +226,9 @@ export default function IntegracoesPage() {
         }
       }
       if (sheetsConfig.ultima_sincronizacao) {
+        const idAbreviado = sheetsConfig.spreadsheet_id
+          ? `${sheetsConfig.spreadsheet_id.slice(0, 12)}...`
+          : '—'
         return {
           status: sheetsConfig.ultimo_status === 'erro' ? 'erros_recentes' : 'ok',
           label:
@@ -230,19 +239,22 @@ export default function IntegracoesPage() {
             sheetsConfig.ultimo_status === 'erro'
               ? 'bg-rose-100 text-rose-800 border-rose-300'
               : 'bg-emerald-100 text-emerald-800 border-emerald-300',
-          descricao: `Planilha Google ID: ${sheetsConfig.spreadsheet_id.slice(0, 12)}... (${sheetsConfig.linhas_ingeridas_total || 0} registros ingeridos).`,
+          descricao: `Planilha Google ID: ${idAbreviado} (${sheetsConfig.linhas_ingeridas_total || 0} registros ingeridos).`,
           tempoUso: sheetsConfig.ultima_sincronizacao,
         }
       }
     }
 
-    if (!credD2 && !sheetsAtivo) {
+    if (!credD2) {
       return {
-        status: 'nao_configurada',
-        label: 'Aguardando Configuração',
-        badgeClass: 'bg-neutral-100 text-neutral-600 border-neutral-300',
-        descricao:
-          'Configure a planilha Google Sheets acima para leitura automática dos dados da D2.',
+        status: sheetsAtivo ? 'ok' : 'nao_configurada',
+        label: sheetsAtivo ? 'Google Sheets Ativo' : 'Aguardando Configuração',
+        badgeClass: sheetsAtivo
+          ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+          : 'bg-neutral-100 text-neutral-600 border-neutral-300',
+        descricao: sheetsAtivo
+          ? 'Planilha Google Sheets ativa para leitura da D2 Toledo. Aguardando sincronização.'
+          : 'Configure a planilha Google Sheets acima para leitura automática dos dados da D2.',
         tempoUso: null,
       }
     }
@@ -315,16 +327,16 @@ export default function IntegracoesPage() {
       toast.error('Apenas Administradores podem ativar ou inativar chaves de API.')
       return
     }
-    const novoStatus = !cred.is_ativa
+    const novoStatus = !cred?.is_ativa
     try {
       await apiService.toggleIntegracaoAtiva(cred.id, novoStatus)
       setCredenciais((prev) =>
         prev.map((c) => (c.id === cred.id ? { ...c, is_ativa: novoStatus } : c)),
       )
       toast.success(
-        `Integração "${cred.nome}" ${novoStatus ? 'ativada' : 'desativada'} com sucesso!`,
+        `Integração "${cred?.nome || 'API'}" ${novoStatus ? 'ativada' : 'desativada'} com sucesso!`,
       )
-    } catch (err: any) {
+    } catch (_err: any) {
       toast.error('Erro ao atualizar status da integração')
     }
   }
@@ -727,7 +739,7 @@ export default function IntegracoesPage() {
               {credenciais.length}
             </span>
             <span className="text-[11px] text-[#5A6D5A]">
-              {credenciais.filter((c) => c.is_ativa).length} ativas
+              {(credenciais || []).filter((c) => Boolean(c?.is_ativa)).length} ativas
             </span>
           </div>
 
@@ -916,13 +928,13 @@ export default function IntegracoesPage() {
                             <div className="flex items-center justify-center gap-2">
                               {isAdmin ? (
                                 <Switch
-                                  checked={cred.is_ativa}
+                                  checked={Boolean(cred?.is_ativa)}
                                   onCheckedChange={() => handleToggleAtiva(cred)}
                                   title={
-                                    cred.is_ativa ? 'Clique para inativar' : 'Clique para ativar'
+                                    cred?.is_ativa ? 'Clique para inativar' : 'Clique para ativar'
                                   }
                                 />
-                              ) : cred.is_ativa ? (
+                              ) : cred?.is_ativa ? (
                                 <Badge className="bg-emerald-600 text-white text-[10px]">
                                   Ativa
                                 </Badge>
@@ -1401,9 +1413,9 @@ export default function IntegracoesPage() {
                       <SelectValue placeholder="Selecione a chave de API" />
                     </SelectTrigger>
                     <SelectContent>
-                      {credenciais.map((c) => (
+                      {(credenciais || []).map((c) => (
                         <SelectItem key={c.id} value={c.id}>
-                          {c.nome} ({c.is_ativa ? 'Ativa' : 'Inativa'})
+                          {c.nome} ({c?.is_ativa ? 'Ativa' : 'Inativa'})
                         </SelectItem>
                       ))}
                     </SelectContent>
