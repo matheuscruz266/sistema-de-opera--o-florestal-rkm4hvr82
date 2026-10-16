@@ -1727,16 +1727,8 @@ routerAdd('POST', '/backend/v1/importador/previa', (e) => {
           motivoRejeicao = 'Código da Pilha é obrigatório'
         }
       } else if (destinoTabela === 'historico_picador') {
-        const nfIdx = cabecalhos.findIndex(
-          (h) =>
-            mapeamento[h] === 'nota_fiscal' ||
-            h.toLowerCase().includes('nota') ||
-            h.toLowerCase().includes('ticket') ||
-            h.toLowerCase() === 'nf',
-        )
-        if (nfIdx >= 0 && (!row[nfIdx] || !row[nfIdx].toString().trim())) {
-          motivoRejeicao = 'Nota Fiscal / Ticket é obrigatório no histórico do Picador'
-        }
+        // Na importação da aba picador, não recusa por falta de nota fiscal/ticket
+        // Campo vazio é aceito na importação e preenchido com identificador automático se vazio
       }
 
       if (motivoRejeicao) {
@@ -2441,7 +2433,12 @@ routerAdd('POST', '/backend/v1/importador/executar', (e) => {
           if (dados.conferente_nome) rec.set('conferente_nome', dados.conferente_nome.toString())
         } else if (destinoTabela === 'historico_picador') {
           let nf = (dados.nota_fiscal || dados.ticket || dados.nf || '').toString().trim()
-          if (!nf) nf = 'IMP-PIC-' + new Date().getTime() + '-' + linhaNum
+          if (!nf) {
+            // Nota fiscal vazia na planilha deve ser aceita sem recusa
+            // Para garantir unicidade no banco (índice UNIQUE), gera código determinístico com base no appSheetId ou timestamp/linha
+            const refId = rawIdVal || `${new Date().getTime()}-${linhaNum}`
+            nf = `PIC-S-NOTA-${refId}`
+          }
           rec.set('nota_fiscal', nf)
           const cmId = resolverFK('caminhoes', dados.caminhao_id || dados.placa || dados.caminhao)
           if (cmId) rec.set('caminhao_id', cmId)

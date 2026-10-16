@@ -729,8 +729,8 @@ export const BASES_IMPORTADOR_CATALOGO: BaseImportadorDefinicao[] = [
     camposDestino: [
       {
         campo: 'nota_fiscal',
-        label: 'Nota Fiscal / Ticket (Chave Única)',
-        obrigatorio: true,
+        label: 'Nota Fiscal / Ticket',
+        obrigatorio: false,
         sugestoesCabecalho: [
           'nota_fiscal',
           'ticket',
