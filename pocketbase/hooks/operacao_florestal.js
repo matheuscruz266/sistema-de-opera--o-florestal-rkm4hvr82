@@ -2695,3 +2695,118 @@ routerAdd('GET', '/backend/v1/ingestao/status', (e) => {
     versao: '1.1-florestal',
   })
 })
+
+// ==============================================================================
+// 4. ENDPOINT ADMINISTRATIVO: PURGE / RESET DA BASE DE DADOS
+// Exige autenticação de Administrador (e.auth && papel === 'admin')
+// Esvazia todas as coleções de operação e histórico respeitando relações
+// Preserva intactos: users (admin), integracao_credenciais, google_sheets_config e importador_bases_config
+// ==============================================================================
+routerAdd('POST', '/backend/v1/admin/purge', (e) => {
+  const authRecord = e.auth
+  if (!authRecord || authRecord.getString('papel') !== 'admin') {
+    return e.json(403, {
+      sucesso: false,
+      erro: 'Acesso negado. Apenas usuários com papel "admin" podem executar a limpeza total da base de dados.',
+    })
+  }
+
+  const collectionsToPurge = [
+    'conciliacao_divergencias_hist',
+    'conciliacao_ajustes',
+    'conciliacao_alertas',
+    'inventario_pilha',
+    'historico_descarga',
+    'historico_picador',
+    'historico_baldeio',
+    'historico_skidder',
+    'historico_feller',
+    'pilhas',
+    'talhoes',
+    'motivos',
+    'maquinas',
+    'caminhao_baldeio',
+    'caminhoes',
+    'fazendas',
+    'conversao_sr_cavaco',
+    'conversao_sr_toras',
+    'parametros_operacionais',
+    'integracao_logs',
+  ]
+
+  const resultadoPorColecao = []
+  let totalRegistrosRemovidos = 0
+
+  for (let i = 0; i < collectionsToPurge.length; i++) {
+    const colName = collectionsToPurge[i]
+    try {
+      if (e.app.hasTable(colName)) {
+        const col = e.app.findCollectionByNameOrId(colName)
+        let contagemAntes = 0
+        try {
+          contagemAntes = e.app.countRecords(colName)
+        } catch (_) {}
+
+        e.app.truncateCollection(col)
+        totalRegistrosRemovidos += contagemAntes
+        resultadoPorColecao.push({
+          colecao: colName,
+          removidos: contagemAntes,
+          status: 'limpa',
+        })
+      }
+    } catch (err) {
+      console.log('Erro ao limpar ' + colName + ' no endpoint purge:', err)
+      resultadoPorColecao.push({
+        colecao: colName,
+        removidos: 0,
+        status: 'erro',
+        motivo: '' + err,
+      })
+    }
+  }
+
+  // Zera contadores de sincronização das configurações sem apagar credenciais e IDs
+  try {
+    if (e.app.hasTable('google_sheets_config')) {
+      const sheetsConfigs = e.app.findRecordsByFilter('google_sheets_config', '', '', 100, 0)
+      for (let s = 0; s < sheetsConfigs.length; s++) {
+        const sc = sheetsConfigs[s]
+        sc.set('linhas_ingeridas_total', 0)
+        sc.set('ultima_sincronizacao', '')
+        sc.set('ultimo_status', '')
+        sc.set('ultimo_erro', '')
+        e.app.save(sc)
+      }
+    }
+  } catch (_) {}
+
+  try {
+    if (e.app.hasTable('importador_bases_config')) {
+      const importadorConfigs = e.app.findRecordsByFilter('importador_bases_config', '', '', 100, 0)
+      for (let m = 0; m < importadorConfigs.length; m++) {
+        const ic = importadorConfigs[m]
+        ic.set('total_importados', 0)
+        ic.set('ultima_importacao', '')
+        ic.set('ultimo_status', '')
+        ic.set('ultimo_erro', '')
+        e.app.save(ic)
+      }
+    }
+  } catch (_) {}
+
+  return e.json(200, {
+    sucesso: true,
+    mensagem:
+      'Base de dados de operação florestal limpa com sucesso. Todos os registros de dados foram zerados.',
+    total_registros_removidos: totalRegistrosRemovidos,
+    colecoes: resultadoPorColecao,
+    preservados: [
+      'users (usuário henrique@julitago.com.br e autenticações mantidos)',
+      'integracao_credenciais (chaves de API das integrações)',
+      'google_sheets_config (conexão e planilha Google Sheets)',
+      'importador_bases_config (metadados e mapeamentos de colunas)',
+    ],
+    timestamp: new Date().toISOString(),
+  })
+})

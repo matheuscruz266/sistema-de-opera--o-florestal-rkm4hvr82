@@ -810,4 +810,30 @@ export const apiService = {
       }
     }
   },
+
+  /**
+   * Limpeza e reset completo da base de dados (admin only).
+   * Esvazia todas as tabelas de cadastros, históricos, estoques, conciliações e logs operacionais.
+   * Preserva a conta de usuário admin, credenciais de API e configurações de conexão de planilhas.
+   */
+  async purgarBaseDados(): Promise<{
+    sucesso: boolean
+    mensagem?: string
+    erro?: string
+    total_registros_removidos?: number
+    colecoes?: Array<{ colecao: string; removidos: number; status: string; motivo?: string }>
+    preservados?: string[]
+  }> {
+    try {
+      const res = await pb.send<any>('/backend/v1/admin/purge', {
+        method: 'POST',
+      })
+      return res
+    } catch (err: any) {
+      return {
+        sucesso: false,
+        erro: err?.data?.erro || err?.message || 'Falha ao executar limpeza da base de dados.',
+      }
+    }
+  },
 }

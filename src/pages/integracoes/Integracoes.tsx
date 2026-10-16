@@ -54,6 +54,7 @@ import {
   Building2,
   Trash2,
   FileSpreadsheet,
+  RotateCcw,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { GoogleSheetsD2Section } from './GoogleSheetsD2Section'
@@ -98,6 +99,11 @@ export default function IntegracoesPage() {
   const [novoTipo, setNovoTipo] = useState<TipoIntegracao>('picador_d2')
   const [novaDescricao, setNovaDescricao] = useState('')
   const [salvandoChave, setSalvandoChave] = useState(false)
+
+  // Modal e Ação de Zerar Base de Dados
+  const [modalPurgeOpen, setModalPurgeOpen] = useState(false)
+  const [purgandoBase, setPurgandoBase] = useState(false)
+  const [confirmacaoPurgeTexto, setConfirmacaoPurgeTexto] = useState('')
 
   // Controle de exibição de chaves na tabela
   const [chavesVisiveis, setChavesVisiveis] = useState<Record<string, boolean>>({})
@@ -496,6 +502,37 @@ export default function IntegracoesPage() {
     }
   }
 
+  // Executar limpeza e reset total da base de dados
+  const handleExecutarPurge = async () => {
+    if (!isAdmin) {
+      toast.error('Apenas Administradores podem zerar a base de dados.')
+      return
+    }
+    if (confirmacaoPurgeTexto.trim().toUpperCase() !== 'ZERAR') {
+      toast.error('Digite a palavra ZERAR para confirmar a ação irreversível.')
+      return
+    }
+
+    setPurgandoBase(true)
+    try {
+      const res = await apiService.purgarBaseDados()
+      if (res.sucesso) {
+        toast.success(
+          res.mensagem || 'Base de dados zerada com sucesso! Cadastros e históricos foram limpos.',
+        )
+        setModalPurgeOpen(false)
+        setConfirmacaoPurgeTexto('')
+        await Promise.all([loadLogs(1), loadSheetsConfig(), loadAuxData()])
+      } else {
+        toast.error(res.erro || 'Falha ao executar limpeza da base de dados.')
+      }
+    } catch (err: any) {
+      toast.error(err?.data?.erro || err?.message || 'Erro ao processar limpeza da base.')
+    } finally {
+      setPurgandoBase(false)
+    }
+  }
+
   const formatDataHora = (iso?: string) => {
     if (!iso) return '—'
     try {
@@ -615,13 +652,27 @@ export default function IntegracoesPage() {
 
         <div className="flex items-center gap-2">
           {isAdmin && (
-            <Button
-              onClick={handleOpenCriarChave}
-              className="bg-[#1B5E20] hover:bg-[#14521A] text-white shadow-xs"
-            >
-              <Plus className="w-4 h-4 mr-1.5" />
-              Gerar Nova Chave API
-            </Button>
+            <>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setConfirmacaoPurgeTexto('')
+                  setModalPurgeOpen(true)
+                }}
+                className="border-rose-300 text-rose-700 hover:bg-rose-50 hover:text-rose-800 shadow-xs text-xs h-9"
+                title="Zerar dados de operação para iniciar com dados reais"
+              >
+                <RotateCcw className="w-3.5 h-3.5 mr-1.5" />
+                Zerar Base de Dados
+              </Button>
+              <Button
+                onClick={handleOpenCriarChave}
+                className="bg-[#1B5E20] hover:bg-[#14521A] text-white shadow-xs text-xs h-9"
+              >
+                <Plus className="w-4 h-4 mr-1.5" />
+                Gerar Nova Chave API
+              </Button>
+            </>
           )}
         </div>
       </div>
@@ -1648,6 +1699,118 @@ export default function IntegracoesPage() {
               className="bg-[#1A2E1A] hover:bg-neutral-800 text-white w-full sm:w-auto"
             >
               Entendido e Copiado
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* MODAL 3: ZERAR BASE DE DADOS (ADMIN PURGE) */}
+      <Dialog open={modalPurgeOpen} onOpenChange={setModalPurgeOpen}>
+        <DialogContent className="sm:max-w-lg border-rose-300">
+          <DialogHeader>
+            <DialogTitle className="text-lg text-rose-900 flex items-center gap-2">
+              <RotateCcw className="w-5 h-5 text-rose-600" />
+              Zerar Base de Dados do Sistema
+            </DialogTitle>
+            <DialogDescription className="text-xs text-[#5A6D5A]">
+              Esta ação limpa todos os registros de dados de demonstração/testes para início com
+              dados reais de operação.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3.5 py-1 text-xs">
+            <div className="p-3 bg-rose-50 border border-rose-200 rounded-lg text-rose-950 space-y-2">
+              <div className="font-semibold flex items-center gap-1.5 text-rose-800">
+                <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+                O que será excluído (zerado permanentemente):
+              </div>
+              <ul className="list-disc pl-4 space-y-0.5 text-[11px] text-rose-900/90 leading-relaxed">
+                <li>
+                  <strong>Cadastros:</strong> Fazendas, Talhões, Máquinas, Caminhões, Caminhões de
+                  Baldeio, Pilhas e Motivos de Parada.
+                </li>
+                <li>
+                  <strong>Históricos operacionais:</strong> Apontamentos de Feller, Skidder,
+                  Baldeio, Descarga no Pátio e Expedição do Picador.
+                </li>
+                <li>
+                  <strong>Estoques e conciliação:</strong> Inventários físicos ToraCerta, alertas de
+                  divergência, ajustes e histórico de conciliação.
+                </li>
+                <li>
+                  <strong>Parâmetros e tabelas de conversão:</strong> Registros das tabelas de SR de
+                  toras, cavaco e fatores operacionais.
+                </li>
+                <li>
+                  <strong>Histórico de ingestão:</strong> Logs de eventos de sincronização
+                  anteriores.
+                </li>
+              </ul>
+            </div>
+
+            <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-emerald-950 space-y-1">
+              <div className="font-semibold flex items-center gap-1.5 text-emerald-800">
+                <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+                O que será PRESERVADO intacto:
+              </div>
+              <ul className="list-disc pl-4 space-y-0.5 text-[11px] text-emerald-900 leading-relaxed">
+                <li>
+                  <strong>Usuários e Acesso:</strong> Usuário administrador
+                  (henrique@julitago.com.br) e login mantidos sem perda de acesso.
+                </li>
+                <li>
+                  <strong>Chaves de API:</strong> Credenciais de integrações parceiras preservadas.
+                </li>
+                <li>
+                  <strong>Conexão Google Sheets:</strong> Credencial de serviço, planilha ID da D2 e
+                  mapeamentos de abas preservados para você reimportar dados reais a qualquer
+                  momento.
+                </li>
+              </ul>
+            </div>
+
+            <div className="space-y-1.5 pt-1">
+              <Label className="text-xs font-semibold text-[#1A2E1A]">
+                Para confirmar a exclusão definitiva, digite{' '}
+                <span className="text-rose-700 font-mono font-bold">ZERAR</span> abaixo:
+              </Label>
+              <Input
+                placeholder="Digite ZERAR"
+                value={confirmacaoPurgeTexto}
+                onChange={(e) => setConfirmacaoPurgeTexto(e.target.value)}
+                className="h-9 font-mono tracking-wider border-rose-300 focus:border-rose-600 focus:ring-rose-500 text-xs"
+              />
+            </div>
+          </div>
+
+          <DialogFooter className="pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={purgandoBase}
+              onClick={() => setModalPurgeOpen(false)}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              disabled={purgandoBase || confirmacaoPurgeTexto.trim().toUpperCase() !== 'ZERAR'}
+              onClick={handleExecutarPurge}
+              className="bg-rose-700 hover:bg-rose-800 text-white font-semibold"
+            >
+              {purgandoBase ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                  Zerando base de dados...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="w-3.5 h-3.5 mr-1.5" />
+                  Confirmar e Zerar Base
+                </>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
