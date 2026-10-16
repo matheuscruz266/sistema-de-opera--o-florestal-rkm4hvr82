@@ -1256,9 +1256,22 @@ routerAdd('POST', '/backend/v1/sheets/sincronizar', (e) => {
 })
 
 // Cron job para sincronização periódica da planilha (a cada 15 min)
-cronAdd('sync_google_sheets_d2', '*/15 * * * *', () => {
+// Nota: Em pb_hooks PocketBase v0.36 o app global é disponibilizado via e.app (em handlers de eventos) ou por app global
+cronAdd('sync_google_sheets_d2', '*/15 * * * *', (e) => {
   try {
-    const configs = $app.findRecordsByFilter(
+    const pocketApp =
+      typeof e !== 'undefined' && e && e.app
+        ? e.app
+        : typeof app !== 'undefined'
+          ? app
+          : typeof $app !== 'undefined'
+            ? $app
+            : null
+    if (!pocketApp || typeof pocketApp.findRecordsByFilter !== 'function') {
+      return
+    }
+
+    const configs = pocketApp.findRecordsByFilter(
       'google_sheets_config',
       'is_ativa = true && sincronizacao_automatica = true',
       '-created',
@@ -1269,16 +1282,13 @@ cronAdd('sync_google_sheets_d2', '*/15 * * * *', () => {
 
     const cfg = configs[0]
     const spreadsheetId = cfg.getString('spreadsheet_id')
-    const sheetRange = cfg.getString('sheet_range') || 'A1:Z500'
     const privKey = cfg.getString('private_key')
     const clientEmail = cfg.getString('client_email')
 
     if (!spreadsheetId || !privKey || !clientEmail) return
 
-    // Como o cron roda em background sem JWT externo, se houver falha de token,
-    // atualizamos o status para auditoria
     cfg.set('ultimo_status', 'agendado_ativo')
-    $app.save(cfg)
+    pocketApp.save(cfg)
   } catch (cronErr) {
     console.log('Erro no cron de sincronizacao google sheets:', cronErr)
   }
