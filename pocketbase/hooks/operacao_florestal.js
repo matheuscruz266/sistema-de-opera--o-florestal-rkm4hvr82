@@ -1256,9 +1256,9 @@ routerAdd('POST', '/backend/v1/sheets/sincronizar', (e) => {
 })
 
 // Cron job para sincronização periódica da planilha (a cada 15 min)
-cronAdd('sync_google_sheets_d2', '*/15 * * * *', (app) => {
+cronAdd('sync_google_sheets_d2', '*/15 * * * *', () => {
   try {
-    const configs = app.findRecordsByFilter(
+    const configs = $app.findRecordsByFilter(
       'google_sheets_config',
       'is_ativa = true && sincronizacao_automatica = true',
       '-created',
@@ -1278,7 +1278,7 @@ cronAdd('sync_google_sheets_d2', '*/15 * * * *', (app) => {
     // Como o cron roda em background sem JWT externo, se houver falha de token,
     // atualizamos o status para auditoria
     cfg.set('ultimo_status', 'agendado_ativo')
-    app.save(cfg)
+    $app.save(cfg)
   } catch (cronErr) {
     console.log('Erro no cron de sincronizacao google sheets:', cronErr)
   }
