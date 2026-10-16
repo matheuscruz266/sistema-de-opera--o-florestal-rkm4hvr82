@@ -13,7 +13,10 @@
     "lint:fix": "oxlint src --fix",
     "format": "oxfmt",
     "format:check": "oxfmt --check",
+    "git:pull": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/git-pull.ps1",
+    "git:pull:watch": "node scripts/git-pull-watcher.mjs",
     "git:sync": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/git-auto-sync.ps1",
+    "git:sync:watch": "node scripts/git-auto-sync-watcher.mjs",
     "preview": "vite preview",
     "test": "echo \"there are no tests for this project\" && exit 0",
     "test:watch": "echo \"there are no tests for this project\" && exit 0"

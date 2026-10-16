@@ -38,18 +38,42 @@ npm run dev
 
 Abre a aplicação em modo de desenvolvimento em [http://localhost:5173](http://localhost:5173).
 
-### Sincronização automática com GitHub no VS Code
+### Sincronização com o GitHub
 
-Ao abrir a pasta do projeto no VS Code, a tarefa **Git: watch and synchronize with GitHub**:
+O projeto oferece suporte a duas direções de sincronização com o repositório remoto:
 
-1. Detecta alterações nos arquivos do projeto e sincroniza dois segundos após a última gravação.
-2. Cria um commit `chore: auto-sync local changes` para alterações locais.
-3. Atualiza a branch `main` com `git pull --rebase origin main` e envia os commits pendentes com `git push origin main`.
-4. Consulta novas alterações no GitHub a cada 30 segundos, mesmo quando não há alterações locais.
+#### 1. PULL: Trazer alterações do remoto do GitHub para o local (recomendado)
 
-O workspace precisa estar confiável no VS Code, e o Git deve ter acesso de leitura e escrita ao repositório. Para sincronizar manualmente, execute `npm run git:sync`. Uma sincronização já em andamento nunca é iniciada outra vez em paralelo; alterações feitas enquanto isso são enviadas na execução seguinte. Conflitos de rebase pausam o envio automático para evitar sobrescrever o trabalho de qualquer colaborador. Resolva os conflitos e execute a sincronização manualmente.
+Quando você deseja **puxar** o que está no GitHub para sua máquina local sem enviar commits:
 
-O arquivo `.env` continua versionado e é sincronizado como qualquer outro arquivo. Não adicione credenciais ao `.env` se o conteúdo for enviado para um repositório compartilhado.
+```bash
+# Executar pull pontual (fetch + pull com rebase seguro e autostash)
+npm run git:pull
+
+# Ou deixar um monitor contínuo verificando novidades a cada 30 segundos
+npm run git:pull:watch
+```
+
+O comando `npm run git:pull`:
+- Valida o repositório e a branch `main`.
+- Faz `git fetch origin main` para verificar novos commits no remoto.
+- Exibe o status claro em português (quantos commits atrás/à frente).
+- Se houver novos commits no GitHub, aplica-os na sua cópia local preservando eventuais mudanças locais via `autostash`.
+- Caso haja conflitos ou divergências de histórico, exibe instruções amigáveis em português de como resolver sem risco de perda de dados.
+
+#### 2. SYNC / PUSH: Sincronizar alterações locais enviando para o GitHub
+
+Para criar commit automático das alterações locais e enviar (push) para o remoto:
+
+```bash
+# Executar sincronização completa (commit + pull + push)
+npm run git:sync
+
+# Ou iniciar o watcher automático baseado em alterações de arquivos
+npm run git:sync:watch
+```
+
+> **Nota sobre Push Protection**: Se o envio (push) for rejeitado pelo GitHub Secret Push Protection por conta de um commit antigo no histórico do repositório remoto, o comando `npm run git:pull` continuará funcionando perfeitamente para puxar as atualizações do remoto sem tentar forçar push.
 
 ### Build
 
