@@ -626,4 +626,188 @@ export const apiService = {
       }
     }
   },
+
+  // ==========================================
+  // IMPORTADOR MULTI-BASE (14 BASES GOOGLE SHEETS)
+  // ==========================================
+
+  // Buscar configurações salvas por base
+  async getImportadorBasesConfig(): Promise<any[]> {
+    try {
+      return await pb.collection('importador_bases_config').getFullList({
+        sort: 'ordem_execucao',
+      })
+    } catch (err) {
+      console.warn('Erro ao carregar importador_bases_config:', err)
+      return []
+    }
+  },
+
+  // Salvar configuração de uma base específica
+  async salvarImportadorBaseConfig(baseData: {
+    base_key: string
+    base_nome: string
+    destino_tabela: string
+    aba_planilha: string
+    coluna_id_unico: string
+    regra_duplicidade: string
+    ordem_execucao: number
+    is_ativa: boolean
+    mapeamento_campos: Record<string, string>
+    cabecalhos_detectados?: string[]
+  }): Promise<any> {
+    try {
+      const existing = await pb.collection('importador_bases_config').getList(1, 1, {
+        filter: `base_key = '${baseData.base_key}'`,
+      })
+
+      if (existing.items.length > 0) {
+        return await pb.collection('importador_bases_config').update(existing.items[0].id, baseData)
+      } else {
+        return await pb.collection('importador_bases_config').create(baseData)
+      }
+    } catch (err: any) {
+      console.error('Erro ao salvar configuração da base:', err)
+      throw err
+    }
+  },
+
+  // Salvar múltiplas configurações de bases em lote
+  async salvarTodasBasesConfig(configs: any[]): Promise<void> {
+    for (const cfg of configs) {
+      await this.salvarImportadorBaseConfig(cfg)
+    }
+  },
+
+  // Listar todas as abas da planilha
+  async listarAbasPlanilha(params: {
+    spreadsheet_id: string
+    signed_jwt?: string
+    access_token?: string
+  }): Promise<{ sucesso: boolean; abas: string[]; erro?: string }> {
+    try {
+      const res = await pb.send<{ sucesso: boolean; abas: string[]; erro?: string }>(
+        '/backend/v1/sheets/abas',
+        {
+          method: 'POST',
+          body: params,
+        },
+      )
+      return res
+    } catch (err: any) {
+      return {
+        sucesso: false,
+        abas: [],
+        erro: err?.data?.erro || err?.message || 'Falha ao consultar abas da planilha.',
+      }
+    }
+  },
+
+  // Inspecionar cabeçalhos de uma aba para mapeamento
+  async inspecionarCabecalhosAba(params: {
+    spreadsheet_id: string
+    aba: string
+    signed_jwt?: string
+    access_token?: string
+  }): Promise<{
+    sucesso: boolean
+    aba: string
+    cabecalhos: string[]
+    id_sugerido?: string
+    amostra_primeira_linha?: any[]
+    erro?: string
+  }> {
+    try {
+      const res = await pb.send<any>('/backend/v1/sheets/cabecalhos', {
+        method: 'POST',
+        body: params,
+      })
+      return res
+    } catch (err: any) {
+      return {
+        sucesso: false,
+        aba: params.aba,
+        cabecalhos: [],
+        erro: err?.data?.erro || err?.message || 'Falha ao ler cabeçalhos da aba.',
+      }
+    }
+  },
+
+  // Gerar prévia detalhada da importação multi-base sem gravar nada
+  async gerarPreviaImportacao(params: {
+    spreadsheet_id: string
+    signed_jwt?: string
+    access_token?: string
+    bases: Array<{
+      key: string
+      nome: string
+      destino: string
+      aba: string
+      coluna_id: string
+      regra: string
+      ordem: number
+      ativo: boolean
+      mapeamento: Record<string, string>
+    }>
+  }): Promise<any> {
+    try {
+      const res = await pb.send<any>('/backend/v1/importador/previa', {
+        method: 'POST',
+        body: params,
+      })
+      return res
+    } catch (err: any) {
+      return {
+        sucesso: false,
+        total_bases_analisadas: 0,
+        resumo_geral: {
+          total_linhas: 0,
+          total_inserir: 0,
+          total_atualizar: 0,
+          total_ignorar: 0,
+          total_rejeitar: 0,
+        },
+        bases: [],
+        erro: err?.data?.erro || err?.message || 'Falha ao gerar prévia da importação.',
+      }
+    }
+  },
+
+  // Executar a importação multi-base de fato
+  async executarImportacaoMultiBase(params: {
+    spreadsheet_id: string
+    signed_jwt?: string
+    access_token?: string
+    bases: Array<{
+      key: string
+      nome: string
+      destino: string
+      aba: string
+      coluna_id: string
+      regra: string
+      ordem: number
+      ativo: boolean
+      mapeamento: Record<string, string>
+    }>
+  }): Promise<any> {
+    try {
+      const res = await pb.send<any>('/backend/v1/importador/executar', {
+        method: 'POST',
+        body: params,
+      })
+      return res
+    } catch (err: any) {
+      return {
+        sucesso: false,
+        total_bases_processadas: 0,
+        total_linhas_processadas: 0,
+        total_inseridos: 0,
+        total_atualizados: 0,
+        total_ignorados: 0,
+        total_rejeitados: 0,
+        bases: [],
+        erros: [err?.data?.erro || err?.message || 'Falha ao executar importação multi-base.'],
+      }
+    }
+  },
 }

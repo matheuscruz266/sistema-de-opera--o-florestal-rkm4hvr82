@@ -216,31 +216,31 @@ export default function IntegracoesPage() {
 
     // Prioriza o status da Planilha Google Sheets se configurada
     if (sheetsConfig) {
-      if (!sheetsConfig.is_ativa) {
+      if (!sheetsConfig?.is_ativa) {
         return {
           status: 'inativa',
-          label: 'Planilha Sheets Desativada',
+          label: 'Importador Sheets Desativado',
           badgeClass: 'bg-neutral-200 text-neutral-700 border-neutral-400',
-          descricao: 'A conexão com o Google Sheets da D2 Toledo está desativada.',
-          tempoUso: sheetsConfig.ultima_sincronizacao || null,
+          descricao: 'O importador Google Sheets / AppSheet está desativado.',
+          tempoUso: sheetsConfig?.ultima_sincronizacao || null,
         }
       }
-      if (sheetsConfig.ultima_sincronizacao) {
-        const idAbreviado = sheetsConfig.spreadsheet_id
+      if (sheetsConfig?.ultima_sincronizacao) {
+        const idAbreviado = sheetsConfig?.spreadsheet_id
           ? `${sheetsConfig.spreadsheet_id.slice(0, 12)}...`
           : '—'
         return {
-          status: sheetsConfig.ultimo_status === 'erro' ? 'erros_recentes' : 'ok',
+          status: sheetsConfig?.ultimo_status === 'erro' ? 'erros_recentes' : 'ok',
           label:
-            sheetsConfig.ultimo_status === 'erro'
-              ? 'Atenção — Erro Sheets'
-              : 'Google Sheets Sincronizado',
+            sheetsConfig?.ultimo_status === 'erro'
+              ? 'Atenção — Erro Importador'
+              : 'Importador Multi-Base Ativo',
           badgeClass:
-            sheetsConfig.ultimo_status === 'erro'
+            sheetsConfig?.ultimo_status === 'erro'
               ? 'bg-rose-100 text-rose-800 border-rose-300'
               : 'bg-emerald-100 text-emerald-800 border-emerald-300',
-          descricao: `Planilha Google ID: ${idAbreviado} (${sheetsConfig.linhas_ingeridas_total || 0} registros ingeridos).`,
-          tempoUso: sheetsConfig.ultima_sincronizacao,
+          descricao: `Planilha Google ID: ${idAbreviado} (${sheetsConfig?.linhas_ingeridas_total || 0} registros ingeridos).`,
+          tempoUso: sheetsConfig?.ultima_sincronizacao,
         }
       }
     }
@@ -248,18 +248,18 @@ export default function IntegracoesPage() {
     if (!credD2) {
       return {
         status: sheetsAtivo ? 'ok' : 'nao_configurada',
-        label: sheetsAtivo ? 'Google Sheets Ativo' : 'Aguardando Configuração',
+        label: sheetsAtivo ? 'Importador Multi-Base Ativo' : 'Aguardando Configuração',
         badgeClass: sheetsAtivo
           ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
           : 'bg-neutral-100 text-neutral-600 border-neutral-300',
         descricao: sheetsAtivo
-          ? 'Planilha Google Sheets ativa para leitura da D2 Toledo. Aguardando sincronização.'
-          : 'Configure a planilha Google Sheets acima para leitura automática dos dados da D2.',
+          ? 'Importador Multi-Base Google Sheets ativo para as 14 bases do sistema.'
+          : 'Configure a planilha Google Sheets acima para leitura e importação das bases florestais.',
         tempoUso: null,
       }
     }
 
-    if (!credD2.is_ativa) {
+    if (!credD2?.is_ativa) {
       return {
         status: 'inativa',
         label: 'Integração Desativada',
@@ -654,17 +654,17 @@ export default function IntegracoesPage() {
               <h2 className="text-xl font-bold flex items-center gap-2.5">
                 <Radio
                   className={`w-5 h-5 ${
-                    situacaoD2.status === 'ok'
+                    situacaoD2?.status === 'ok'
                       ? 'text-emerald-300 animate-pulse'
-                      : situacaoD2.status === 'erros_recentes'
+                      : situacaoD2?.status === 'erros_recentes'
                         ? 'text-rose-400'
                         : 'text-amber-300'
                   }`}
                 />
-                Status da Integração D2: {situacaoD2.label}
+                Status da Integração & Importador: {situacaoD2?.label || 'Ativo'}
               </h2>
               <p className="text-xs text-emerald-100 max-w-2xl leading-relaxed">
-                {situacaoD2.descricao}
+                {situacaoD2?.descricao || 'Integração pronta para importação de dados.'}
               </p>
             </div>
 
@@ -674,7 +674,7 @@ export default function IntegracoesPage() {
                   Última Atividade
                 </span>
                 <span className="font-mono font-semibold">
-                  {situacaoD2.tempoUso ? formatDataHora(situacaoD2.tempoUso) : 'Nenhum envio'}
+                  {situacaoD2?.tempoUso ? formatDataHora(situacaoD2.tempoUso) : 'Nenhum envio'}
                 </span>
               </div>
 

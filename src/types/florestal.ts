@@ -470,3 +470,128 @@ export interface GoogleSheetsSyncResponse {
   erro?: string
   instrucao?: string
 }
+
+// ==========================================
+// IMPORTADOR MULTI-BASE GOOGLE SHEETS
+// ==========================================
+
+export type RegraDuplicidade = 'atualizar' | 'inserir_apenas' | 'substituir'
+
+export interface BaseImportadorDefinicao {
+  key: string
+  nome: string
+  destino: string // nome da coleção no PocketBase
+  tela: string // título da tela de destino no sistema
+  categoria: 'cadastro' | 'historico' | 'operacao'
+  ordemPadrao: number
+  camposDestino: Array<{
+    campo: string
+    label: string
+    tipo?: 'text' | 'number' | 'relation' | 'select' | 'bool'
+    obrigatorio?: boolean
+    sugestoesCabecalho?: string[]
+  }>
+}
+
+export interface ImportadorBaseConfigItem {
+  id?: string
+  base_key: string
+  base_nome: string
+  destino_tabela: string
+  aba_planilha: string
+  coluna_id_unico: string
+  regra_duplicidade: RegraDuplicidade
+  ordem_execucao: number
+  is_ativa: boolean
+  mapeamento_campos: Record<string, string> // { [colunaPlanilha]: campoDestino }
+  cabecalhos_detectados?: string[]
+  ultima_importacao?: string
+  total_importados?: number
+  ultimo_status?: string
+  ultimo_erro?: string
+}
+
+export interface SheetsAbasListResponse {
+  sucesso: boolean
+  spreadsheet_id?: string
+  abas: string[]
+  erro?: string
+}
+
+export interface SheetsCabecalhosResponse {
+  sucesso: boolean
+  aba: string
+  cabecalhos: string[]
+  id_sugerido?: string
+  amostra_primeira_linha?: any[]
+  erro?: string
+}
+
+export interface PreviaBaseItem {
+  key: string
+  nome: string
+  destino: string
+  aba: string
+  coluna_id: string
+  regra: RegraDuplicidade
+  total_linhas: number
+  inserir: number
+  atualizar: number
+  ignorar: number
+  rejeitar: number
+  rejeitados_lista: Array<{
+    linha: number
+    id_planilha?: string
+    motivo: string
+  }>
+  amostra_processada: Array<{
+    linha: number
+    id_chave: string
+    tipo_acao: 'inserir' | 'atualizar' | 'ignorar'
+  }>
+  erro?: string
+}
+
+export interface PreviaImportacaoResponse {
+  sucesso: boolean
+  total_bases_analisadas: number
+  resumo_geral: {
+    total_linhas: number
+    total_inserir: number
+    total_atualizar: number
+    total_ignorar: number
+    total_rejeitar: number
+  }
+  bases: PreviaBaseItem[]
+  erro?: string
+}
+
+export interface ExecutarImportacaoResponse {
+  sucesso: boolean
+  total_bases_processadas: number
+  total_linhas_processadas: number
+  total_inseridos: number
+  total_atualizados: number
+  total_ignorados: number
+  total_rejeitados: number
+  bases: Array<{
+    key: string
+    nome: string
+    destino: string
+    aba: string
+    linhas_lidas: number
+    inseridos: number
+    atualizados: number
+    ignorados: number
+    rejeitados: number
+    status: 'sucesso' | 'parcial' | 'erro'
+    erro?: string
+    detalhes?: Array<{
+      linha: number
+      id_chave: string
+      status: string
+      motivo?: string
+    }>
+  }>
+  erros: string[]
+}

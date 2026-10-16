@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-16T13:44:58.248Z",
+  "generatedAt": "2026-10-16T14:04:36.298Z",
   "collections": [
     {
       "name": "users",
@@ -48,6 +48,12 @@
         {
           "name": "status",
           "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "app_sheet_id",
+          "type": "text",
           "required": false,
           "system": false
         }
@@ -124,6 +130,12 @@
           "required": false,
           "system": false,
           "autodateTriggers": ["onCreate", "onUpdate"]
+        },
+        {
+          "name": "app_sheet_id",
+          "type": "text",
+          "required": false,
+          "system": false
         }
       ],
       "indexes": ["CREATE UNIQUE INDEX idx_fazendas_codigo ON fazendas (codigo)"]
@@ -190,6 +202,12 @@
           "required": false,
           "system": false,
           "autodateTriggers": ["onCreate", "onUpdate"]
+        },
+        {
+          "name": "app_sheet_id",
+          "type": "text",
+          "required": false,
+          "system": false
         }
       ],
       "indexes": ["CREATE INDEX idx_talhoes_fazenda ON talhoes (fazenda_id)"]
@@ -263,6 +281,12 @@
           "required": false,
           "system": false,
           "autodateTriggers": ["onCreate", "onUpdate"]
+        },
+        {
+          "name": "app_sheet_id",
+          "type": "text",
+          "required": false,
+          "system": false
         }
       ],
       "indexes": ["CREATE UNIQUE INDEX idx_maquinas_id_maquina ON maquinas (id_maquina)"]
@@ -322,6 +346,12 @@
           "required": false,
           "system": false,
           "autodateTriggers": ["onCreate", "onUpdate"]
+        },
+        {
+          "name": "app_sheet_id",
+          "type": "text",
+          "required": false,
+          "system": false
         }
       ],
       "indexes": ["CREATE UNIQUE INDEX idx_caminhoes_placa ON caminhoes (placa)"]
@@ -381,6 +411,12 @@
           "required": false,
           "system": false,
           "autodateTriggers": ["onCreate", "onUpdate"]
+        },
+        {
+          "name": "app_sheet_id",
+          "type": "text",
+          "required": false,
+          "system": false
         }
       ],
       "indexes": ["CREATE UNIQUE INDEX idx_cam_baldeio_placa ON caminhao_baldeio (placa_baldeio)"]
@@ -461,6 +497,12 @@
           "required": false,
           "system": false,
           "autodateTriggers": ["onCreate", "onUpdate"]
+        },
+        {
+          "name": "app_sheet_id",
+          "type": "text",
+          "required": false,
+          "system": false
         }
       ],
       "indexes": ["CREATE UNIQUE INDEX idx_pilhas_codigo ON pilhas (codigo)"]
@@ -527,6 +569,12 @@
           "required": false,
           "system": false,
           "autodateTriggers": ["onCreate", "onUpdate"]
+        },
+        {
+          "name": "app_sheet_id",
+          "type": "text",
+          "required": false,
+          "system": false
         }
       ],
       "indexes": ["CREATE UNIQUE INDEX idx_motivos_id ON motivos (id_motivo)"]
@@ -847,6 +895,12 @@
           "required": false,
           "system": false,
           "autodateTriggers": ["onCreate", "onUpdate"]
+        },
+        {
+          "name": "app_sheet_id",
+          "type": "text",
+          "required": false,
+          "system": false
         }
       ],
       "indexes": ["CREATE INDEX idx_feller_data ON historico_feller (data_operacao DESC)"]
@@ -919,6 +973,12 @@
           "required": false,
           "system": false,
           "autodateTriggers": ["onCreate", "onUpdate"]
+        },
+        {
+          "name": "app_sheet_id",
+          "type": "text",
+          "required": false,
+          "system": false
         }
       ],
       "indexes": ["CREATE INDEX idx_skidder_data ON historico_skidder (data_operacao DESC)"]
@@ -1018,6 +1078,12 @@
           "required": false,
           "system": false,
           "autodateTriggers": ["onCreate", "onUpdate"]
+        },
+        {
+          "name": "app_sheet_id",
+          "type": "text",
+          "required": false,
+          "system": false
         }
       ],
       "indexes": ["CREATE INDEX idx_baldeio_data ON historico_baldeio (data_hora_saida DESC)"]
@@ -1122,6 +1188,12 @@
           "required": false,
           "system": false,
           "autodateTriggers": ["onCreate", "onUpdate"]
+        },
+        {
+          "name": "app_sheet_id",
+          "type": "text",
+          "required": false,
+          "system": false
         }
       ],
       "indexes": [
@@ -1221,6 +1293,12 @@
           "required": false,
           "system": false,
           "autodateTriggers": ["onCreate", "onUpdate"]
+        },
+        {
+          "name": "app_sheet_id",
+          "type": "text",
+          "required": false,
+          "system": false
         }
       ],
       "indexes": ["CREATE UNIQUE INDEX idx_picador_nota ON historico_picador (nota_fiscal)"]
@@ -1902,6 +1980,121 @@
         }
       ],
       "indexes": ["CREATE INDEX idx_sheets_cfg_ativa ON google_sheets_config (is_ativa)"]
+    },
+    {
+      "name": "importador_bases_config",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != '' && @request.auth.papel = 'admin'",
+        "view": "@request.auth.id != '' && @request.auth.papel = 'admin'",
+        "create": "@request.auth.id != '' && @request.auth.papel = 'admin'",
+        "update": "@request.auth.id != '' && @request.auth.papel = 'admin'",
+        "delete": "@request.auth.id != '' && @request.auth.papel = 'admin'"
+      },
+      "fields": [
+        {
+          "name": "base_key",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "base_nome",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "destino_tabela",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "aba_planilha",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "coluna_id_unico",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "regra_duplicidade",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "ordem_execucao",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "is_ativa",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "mapeamento_campos",
+          "type": "json",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "cabecalhos_detectados",
+          "type": "json",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "ultima_importacao",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "total_importados",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "ultimo_status",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "ultimo_erro",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": [
+        "CREATE UNIQUE INDEX idx_importador_base_key ON importador_bases_config (base_key)",
+        "CREATE INDEX idx_importador_ordem ON importador_bases_config (ordem_execucao)"
+      ]
     }
   ]
 }
