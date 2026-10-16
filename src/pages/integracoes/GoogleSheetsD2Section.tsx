@@ -23,8 +23,8 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { apiService } from '@/services/florestalApi'
-import { GoogleSheetsConfigRecord } from '@/types/florestal'
-import { createGoogleServiceAccountJwt } from '@/lib/googleJwt'
+import { getErrorMessage } from '@/lib/pocketbase/errors'
+import { GoogleServiceAccountKey, GoogleSheetsConfigRecord } from '@/types/florestal'
 
 interface GoogleSheetsD2SectionProps {
   config: GoogleSheetsConfigRecord | null
@@ -43,10 +43,7 @@ export const GoogleSheetsD2Section: React.FC<GoogleSheetsD2SectionProps> = ({
   const [spreadsheetId, setSpreadsheetId] = useState(config?.spreadsheet_id || '')
   const [sheetRange, setSheetRange] = useState(config?.sheet_range || 'P1!A:Z')
   const [serviceAccountJson, setServiceAccountJson] = useState('')
-  const [substituindoChave, setSubstituindoChave] = useState(!config?.client_email)
-  const [sincronizacaoAutomatica, setSincronizacaoAutomatica] = useState(
-    config?.sincronizacao_automatica ?? true,
-  )
+  const [substituindoChave, setSubstituindoChave] = useState(!config?.has_credentials)
   const [isAtiva, setIsAtiva] = useState(config?.is_ativa ?? true)
 
   // Estados de ação
@@ -69,7 +66,6 @@ export const GoogleSheetsD2Section: React.FC<GoogleSheetsD2SectionProps> = ({
     if (config) {
       setSpreadsheetId(config.spreadsheet_id || '')
       setSheetRange(config.sheet_range || 'P1!A:Z')
-      setSincronizacaoAutomatica(config.sincronizacao_automatica ?? true)
       setIsAtiva(config.is_ativa ?? true)
       if (config.client_email) {
         setSubstituindoChave(false)
@@ -95,37 +91,46 @@ export const GoogleSheetsD2Section: React.FC<GoogleSheetsD2SectionProps> = ({
   }
 
   // Parse e validação do JSON da conta de serviço
-  const parseServiceAccountJson = (jsonString: string) => {
+  const parseServiceAccountJson = (jsonString: string): GoogleServiceAccountKey => {
     try {
-      const parsed = JSON.parse(jsonString)
-      if (parsed.type !== 'service_account') {
+      const parsed: unknown = JSON.parse(jsonString)
+      if (!parsed || typeof parsed !== 'object') {
+        throw new Error('O conteúdo precisa ser um objeto JSON.')
+      }
+      const account = parsed as Record<string, unknown>
+      if (account.type !== 'service_account') {
         throw new Error('O JSON informado não é do tipo "service_account".')
       }
-      if (!parsed.client_email || !parsed.private_key) {
-        throw new Error('O JSON deve conter "client_email" e "private_key".')
+      if (
+        typeof account.client_email !== 'string' ||
+        typeof account.private_key !== 'string' ||
+        !account.client_email ||
+        !account.private_key.includes('-----BEGIN PRIVATE KEY-----') ||
+        !account.private_key.includes('-----END PRIVATE KEY-----')
+      ) {
+        throw new Error('O JSON deve conter "client_email" e uma chave privada PKCS#8 válida.')
       }
-      return parsed
-    } catch (err: any) {
-      throw new Error(`JSON de conta de serviço inválido: ${err.message}`)
+      return {
+        type: 'service_account',
+        project_id: typeof account.project_id === 'string' ? account.project_id : '',
+        private_key: account.private_key,
+        client_email: account.client_email,
+        private_key_id: typeof account.private_key_id === 'string' ? account.private_key_id : '',
+        client_id: typeof account.client_id === 'string' ? account.client_id : '',
+        auth_uri: typeof account.auth_uri === 'string' ? account.auth_uri : '',
+        token_uri: typeof account.token_uri === 'string' ? account.token_uri : '',
+        auth_provider_x509_cert_url:
+          typeof account.auth_provider_x509_cert_url === 'string'
+            ? account.auth_provider_x509_cert_url
+            : '',
+        client_x509_cert_url:
+          typeof account.client_x509_cert_url === 'string' ? account.client_x509_cert_url : '',
+        universe_domain: typeof account.universe_domain === 'string' ? account.universe_domain : '',
+      }
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'formato inválido'
+      throw new Error(`JSON de conta de serviço inválido: ${message}`)
     }
-  }
-
-  // Obter credencial ativa (do form ou do backend se mantida)
-  const obterCredencialParaAcao = async () => {
-    let clientEmail = config?.client_email || ''
-    let privateKey = config?.private_key || ''
-
-    if (serviceAccountJson.trim()) {
-      const parsed = parseServiceAccountJson(serviceAccountJson.trim())
-      clientEmail = parsed.client_email
-      privateKey = parsed.private_key
-    }
-
-    if (!clientEmail || !privateKey) {
-      throw new Error('Cole o JSON da Conta de Serviço do Google para autenticar.')
-    }
-
-    return { clientEmail, privateKey }
   }
 
   // Salvar configurações
@@ -146,34 +151,32 @@ export const GoogleSheetsD2Section: React.FC<GoogleSheetsD2SectionProps> = ({
       spreadsheet_id: spreadsheetId.trim(),
       sheet_range: sheetRange.trim() || 'P1!A:Z',
       is_ativa: isAtiva,
-      sincronizacao_automatica: sincronizacaoAutomatica,
+      sincronizacao_automatica: false,
       intervalo_minutos: 15,
     }
 
+    let serviceAccount: GoogleServiceAccountKey | undefined
     if (serviceAccountJson.trim()) {
       try {
-        const parsed = parseServiceAccountJson(serviceAccountJson.trim())
-        payload.client_email = parsed.client_email
-        payload.project_id = parsed.project_id || ''
-        payload.private_key = parsed.private_key
-      } catch (err: any) {
-        toast.error(err.message)
+        serviceAccount = parseServiceAccountJson(serviceAccountJson.trim())
+      } catch (err: unknown) {
+        toast.error(err instanceof Error ? err.message : 'JSON de conta de serviço inválido.')
         return
       }
-    } else if (!config?.private_key) {
+    } else if (!config?.has_credentials) {
       toast.error('Cole o JSON completo da conta de serviço do Google.')
       return
     }
 
     setSalvando(true)
     try {
-      await apiService.salvarGoogleSheetsConfig(payload)
+      await apiService.salvarGoogleSheetsConfig(payload, serviceAccount)
       toast.success('Configurações do Google Sheets salvas com sucesso!')
       setServiceAccountJson('')
       setSubstituindoChave(false)
       onConfigUpdated()
-    } catch (err: any) {
-      toast.error(err.message || 'Erro ao salvar configuração do Google Sheets.')
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err) || 'Erro ao salvar configuração do Google Sheets.')
     } finally {
       setSalvando(false)
     }
@@ -190,20 +193,9 @@ export const GoogleSheetsD2Section: React.FC<GoogleSheetsD2SectionProps> = ({
     setResultadoTeste(null)
 
     try {
-      const { clientEmail, privateKey } = await obterCredencialParaAcao()
-
-      // Gera o JWT de asserção OAuth2 no cliente usando Web Crypto nativa
-      const signedJwt = await createGoogleServiceAccountJwt(
-        clientEmail,
-        privateKey,
-        'https://www.googleapis.com/auth/spreadsheets.readonly',
-      )
-
-      // Dispara teste no backend
       const res = await apiService.testarGoogleSheets({
         spreadsheet_id: spreadsheetId.trim(),
         sheet_range: sheetRange.trim() || 'A1:Z50',
-        signed_jwt: signedJwt,
       })
 
       if (res.sucesso) {
@@ -247,19 +239,9 @@ export const GoogleSheetsD2Section: React.FC<GoogleSheetsD2SectionProps> = ({
 
     setSincronizando(true)
     try {
-      const { clientEmail, privateKey } = await obterCredencialParaAcao()
-
-      // Gera JWT assinado
-      const signedJwt = await createGoogleServiceAccountJwt(
-        clientEmail,
-        privateKey,
-        'https://www.googleapis.com/auth/spreadsheets.readonly',
-      )
-
       const res = await apiService.sincronizarGoogleSheets({
         spreadsheet_id: spreadsheetId.trim(),
         sheet_range: sheetRange.trim() || 'A1:Z500',
-        signed_jwt: signedJwt,
       })
 
       if (res.sucesso) {
@@ -387,7 +369,7 @@ export const GoogleSheetsD2Section: React.FC<GoogleSheetsD2SectionProps> = ({
                   <KeyRound className="w-3.5 h-3.5 text-[#1B5E20]" />
                   JSON da Conta de Serviço do Google (Service Account) *
                 </Label>
-                {config?.client_email && !substituindoChave && (
+                {config?.has_credentials && !substituindoChave && (
                   <Button
                     type="button"
                     variant="ghost"
@@ -400,12 +382,12 @@ export const GoogleSheetsD2Section: React.FC<GoogleSheetsD2SectionProps> = ({
                 )}
               </div>
 
-              {config?.client_email && !substituindoChave ? (
+              {config?.has_credentials && !substituindoChave ? (
                 <div className="p-3 bg-neutral-50 rounded-lg border border-[#DDE4DE] space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-medium text-[#1A2E1A] flex items-center gap-1.5">
                       <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                      Credencial Configurada & Criptografada
+                      Credencial protegida no servidor
                     </span>
                     <Badge className="bg-emerald-100 text-emerald-800 border-emerald-300 text-[10px]">
                       •••• Ativa ••••
@@ -420,8 +402,7 @@ export const GoogleSheetsD2Section: React.FC<GoogleSheetsD2SectionProps> = ({
                     </span>
                   </div>
                   <p className="text-[11px] text-[#5A6D5A]">
-                    A chave privada RSA (private_key) está gravada no banco para uso do servidor e
-                    nunca é exibida na tela por motivos de segurança.
+                    A chave privada fica criptografada no servidor e nunca é retornada à tela.
                   </p>
                 </div>
               ) : (
@@ -490,17 +471,13 @@ export const GoogleSheetsD2Section: React.FC<GoogleSheetsD2SectionProps> = ({
                 <div>
                   <span className="text-xs font-semibold text-[#1A2E1A] flex items-center gap-1.5">
                     <Clock className="w-3.5 h-3.5 text-[#1B5E20]" />
-                    Sincronização Periódica Automática
+                    Sincronização periódica automática
                   </span>
                   <span className="text-[11px] text-[#5A6D5A]">
-                    O cron do backend verifica e sincroniza novas linhas a cada 15 minutos.
+                    Ainda indisponível. Use “Sincronizar Agora” para importar os dados.
                   </span>
                 </div>
-                <Switch
-                  checked={sincronizacaoAutomatica}
-                  onCheckedChange={setSincronizacaoAutomatica}
-                  disabled={!isAdmin}
-                />
+                <Switch checked={false} disabled />
               </div>
             </div>
 

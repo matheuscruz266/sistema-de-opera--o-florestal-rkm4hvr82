@@ -707,6 +707,142 @@ routerAdd('POST', '/backend/v1/ingestao/d2', (e) => {
 // Toda a lógica é estritamente declarada inline em cada callback
 // ==============================================================================
 
+// A coleção de configuração não fica acessível pela API REST. Estas rotas
+// administrativas retornam somente metadados e mantêm a credencial no servidor.
+routerAdd('GET', '/backend/v1/sheets/config', (e) => {
+  const authRecord = e.auth
+  if (!authRecord || authRecord.getString('papel') !== 'admin') {
+    return e.json(403, { erro: 'Apenas Administradores podem consultar a integração.' })
+  }
+
+  try {
+    const records = e.app.findRecordsByFilter('google_sheets_config', '', '-created', 1, 0)
+    if (records.length === 0) return e.json(200, null)
+
+    const record = records[0]
+    return e.json(200, {
+      id: record.id,
+      nome: record.getString('nome'),
+      spreadsheet_id: record.getString('spreadsheet_id'),
+      sheet_range: record.getString('sheet_range'),
+      client_email: record.getString('client_email'),
+      project_id: record.getString('project_id'),
+      has_credentials: !!(
+        record.getString('credential_encrypted') || record.getString('private_key')
+      ),
+      is_ativa: record.getBool('is_ativa'),
+      sincronizacao_automatica: record.getBool('sincronizacao_automatica'),
+      intervalo_minutos: record.getFloat('intervalo_minutos'),
+      ultima_sincronizacao: record.getString('ultima_sincronizacao'),
+      linhas_ingeridas_total: record.getFloat('linhas_ingeridas_total'),
+      ultimo_status: record.getString('ultimo_status'),
+      ultimo_erro: record.getString('ultimo_erro'),
+      created: record.getString('created'),
+      updated: record.getString('updated'),
+    })
+  } catch (err) {
+    console.log('Erro ao consultar configuração do Google Sheets:', err)
+    return e.json(500, { erro: 'Não foi possível carregar a configuração do Google Sheets.' })
+  }
+})
+
+routerAdd('POST', '/backend/v1/sheets/config', (e) => {
+  const authRecord = e.auth
+  if (!authRecord || authRecord.getString('papel') !== 'admin') {
+    return e.json(403, { erro: 'Apenas Administradores podem salvar a integração.' })
+  }
+
+  let body
+  try {
+    body = e.requestInfo().body || {}
+  } catch (_) {
+    return e.json(400, { erro: 'Corpo da requisição inválido.' })
+  }
+
+  const spreadsheetId =
+    typeof body.spreadsheet_id === 'string' ? body.spreadsheet_id.trim() : ''
+  if (!spreadsheetId) {
+    return e.json(400, { erro: 'ID da planilha Google não informado.' })
+  }
+
+  const serviceAccount = body.service_account
+  const hasNewCredential = serviceAccount !== undefined && serviceAccount !== null
+  let encryptedCredential = ''
+  let clientEmail = ''
+  let projectId = ''
+
+  if (hasNewCredential) {
+    if (
+      typeof serviceAccount !== 'object' ||
+      serviceAccount.type !== 'service_account' ||
+      typeof serviceAccount.client_email !== 'string' ||
+      typeof serviceAccount.private_key !== 'string' ||
+      !serviceAccount.client_email.trim() ||
+      !serviceAccount.private_key.includes('-----BEGIN PRIVATE KEY-----') ||
+      !serviceAccount.private_key.includes('-----END PRIVATE KEY-----')
+    ) {
+      return e.json(400, {
+        erro: 'A credencial informada deve ser um JSON válido de conta de serviço do Google.',
+      })
+    }
+
+    const encryptionKey = $os.getenv('GOOGLE_SHEETS_ENCRYPTION_KEY')
+    if (encryptionKey.length !== 32) {
+      return e.json(500, {
+        erro:
+          'O servidor não está configurado para proteger credenciais do Google. Configure GOOGLE_SHEETS_ENCRYPTION_KEY com 32 caracteres.',
+      })
+    }
+
+    clientEmail = serviceAccount.client_email.trim()
+    projectId = typeof serviceAccount.project_id === 'string' ? serviceAccount.project_id : ''
+    encryptedCredential = $security.encrypt(JSON.stringify(serviceAccount), encryptionKey)
+  }
+
+  try {
+    const collection = e.app.findCollectionByNameOrId('google_sheets_config')
+    const records = e.app.findRecordsByFilter('google_sheets_config', '', '-created', 1, 0)
+    const record = records.length > 0 ? records[0] : new Record(collection)
+
+    record.set('nome', body.nome || 'D2 Picador BRF Toledo (Google Sheets)')
+    record.set('spreadsheet_id', spreadsheetId)
+    record.set('sheet_range', body.sheet_range || 'P1!A:Z')
+    record.set('is_ativa', body.is_ativa !== false)
+    record.set('sincronizacao_automatica', false)
+    record.set('intervalo_minutos', Number(body.intervalo_minutos) || 15)
+    if (hasNewCredential) {
+      record.set('client_email', clientEmail)
+      record.set('project_id', projectId)
+      record.set('credential_encrypted', encryptedCredential)
+      record.set('private_key', '')
+    }
+    if (!record.getString('ultimo_status')) record.set('ultimo_status', 'pendente')
+    e.app.save(record)
+
+    return e.json(200, {
+      id: record.id,
+      nome: record.getString('nome'),
+      spreadsheet_id: record.getString('spreadsheet_id'),
+      sheet_range: record.getString('sheet_range'),
+      client_email: record.getString('client_email'),
+      project_id: record.getString('project_id'),
+      has_credentials: !!record.getString('credential_encrypted'),
+      is_ativa: record.getBool('is_ativa'),
+      sincronizacao_automatica: record.getBool('sincronizacao_automatica'),
+      intervalo_minutos: record.getFloat('intervalo_minutos'),
+      ultima_sincronizacao: record.getString('ultima_sincronizacao'),
+      linhas_ingeridas_total: record.getFloat('linhas_ingeridas_total'),
+      ultimo_status: record.getString('ultimo_status'),
+      ultimo_erro: record.getString('ultimo_erro'),
+      created: record.getString('created'),
+      updated: record.getString('updated'),
+    })
+  } catch (err) {
+    console.log('Erro ao salvar configuração do Google Sheets:', err)
+    return e.json(500, { erro: 'Não foi possível salvar a configuração do Google Sheets.' })
+  }
+})
+
 // 1. Rota para testar conexão com o Google Sheets no backend (/backend/v1/sheets/testar)
 routerAdd('POST', '/backend/v1/sheets/testar', (e) => {
   const authRecord = e.auth
@@ -717,15 +853,27 @@ routerAdd('POST', '/backend/v1/sheets/testar', (e) => {
     })
   }
 
-  let body = {}
+  let body
   try {
     body = e.requestInfo().body || {}
-  } catch (_) {}
+  } catch (_) {
+    return e.json(400, { sucesso: false, erro: 'Corpo da requisição inválido.' })
+  }
 
-  const spreadsheetId = (body.spreadsheet_id || '').trim()
-  const sheetRange = (body.sheet_range || 'A1:Z50').trim()
-  const signedJwt = (body.signed_jwt || '').trim()
-  let directToken = (body.access_token || '').trim()
+  let configs
+  try {
+    configs = e.app.findRecordsByFilter('google_sheets_config', '', '-created', 1, 0)
+  } catch (err) {
+    console.log('Erro ao carregar configuração do Google Sheets:', err)
+    return e.json(500, { sucesso: false, erro: 'Não foi possível carregar a configuração.' })
+  }
+  if (configs.length === 0) {
+    return e.json(400, { sucesso: false, erro: 'Configure a integração Google Sheets primeiro.' })
+  }
+
+  const config = configs[0]
+  const spreadsheetId = (body.spreadsheet_id || config.getString('spreadsheet_id')).trim()
+  const sheetRange = (body.sheet_range || config.getString('sheet_range') || 'A1:Z50').trim()
 
   if (!spreadsheetId) {
     return e.json(400, {
@@ -734,52 +882,63 @@ routerAdd('POST', '/backend/v1/sheets/testar', (e) => {
     })
   }
 
-  // Troca JWT por Access Token do Google se fornecido signed_jwt
-  if (!directToken && signedJwt) {
-    try {
-      const tokenUrl = 'https://oauth2.googleapis.com/token'
-      const postBody =
+  const encryptionKey = $os.getenv('GOOGLE_SHEETS_ENCRYPTION_KEY')
+  if (encryptionKey.length !== 32) {
+    return e.json(500, {
+      sucesso: false,
+      erro: 'A chave de criptografia do Google não está configurada no servidor.',
+    })
+  }
+
+  let signedJwt
+  try {
+    const encryptedCredential = config.getString('credential_encrypted')
+    if (!encryptedCredential) {
+      return e.json(400, {
+        sucesso: false,
+        erro: 'Configure uma credencial de serviço do Google.',
+      })
+    }
+    const serviceAccount = JSON.parse($security.decrypt(encryptedCredential, encryptionKey))
+    const jwtSigner = require(`${__hooks}/google_jwt.js`)
+    signedJwt = jwtSigner.signGoogleServiceAccountJwt(
+      serviceAccount.client_email,
+      serviceAccount.private_key,
+    )
+  } catch (err) {
+    console.log('Erro ao preparar autenticação Google Sheets:', err)
+    return e.json(500, { sucesso: false, erro: 'Não foi possível preparar a autenticação do Google.' })
+  }
+
+  let directToken
+  try {
+    const tokenRes = $http.send({
+      method: 'POST',
+      url: 'https://oauth2.googleapis.com/token',
+      body:
         'grant_type=' +
         encodeURIComponent('urn:ietf:params:oauth:grant-type:jwt-bearer') +
         '&assertion=' +
-        encodeURIComponent(signedJwt)
+        encodeURIComponent(signedJwt),
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      timeout: 30,
+    })
 
-      const tokenRes = $http.send({
-        method: 'POST',
-        url: tokenUrl,
-        body: postBody,
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        timeout: 30,
-      })
-
-      if (tokenRes.statusCode !== 200) {
-        let errDesc = 'Erro ' + tokenRes.statusCode + ' ao obter token do Google'
-        try {
-          if (tokenRes.json && tokenRes.json.error_description)
-            errDesc = tokenRes.json.error_description
-          else if (tokenRes.json && tokenRes.json.error) errDesc = tokenRes.json.error
-        } catch (_) {}
-        return e.json(400, {
-          sucesso: false,
-          erro: 'Falha na autenticação OAuth2 com o Google: ' + errDesc,
-          instrucao:
-            'Verifique se a credencial de conta de serviço é válida e se o relógio está sincronizado.',
-        })
-      }
-      directToken = tokenRes.json.access_token
-    } catch (tErr) {
+    if (tokenRes.statusCode !== 200) {
+      const errDesc =
+        (tokenRes.json && (tokenRes.json.error_description || tokenRes.json.error)) ||
+        'Erro ao obter token do Google.'
       return e.json(400, {
         sucesso: false,
-        erro: 'Erro ao trocar JWT por Access Token: ' + (tErr.message || tErr),
+        erro: 'Falha na autenticação OAuth2 com o Google: ' + errDesc,
+        instrucao:
+          'Verifique se a credencial é válida e compartilhe a planilha com o e-mail da conta de serviço.',
       })
     }
-  }
-
-  if (!directToken) {
-    return e.json(400, {
-      sucesso: false,
-      erro: 'Token de acesso ou asserção JWT não informada para autenticar com o Google.',
-    })
+    directToken = tokenRes.json.access_token
+  } catch (err) {
+    console.log('Erro ao trocar JWT por token OAuth2 do Google:', err)
+    return e.json(502, { sucesso: false, erro: 'Não foi possível autenticar com o Google.' })
   }
 
   // Faz a chamada na API do Google Sheets para validar a planilha e aba
@@ -840,7 +999,7 @@ routerAdd('POST', '/backend/v1/sheets/testar', (e) => {
   })
 })
 
-// 2. Rota para sincronização via token ou JWT Google (/backend/v1/sheets/sincronizar)
+// 2. Rota para sincronização autenticada com a credencial guardada no servidor.
 routerAdd('POST', '/backend/v1/sheets/sincronizar', (e) => {
   const authRecord = e.auth
   if (!authRecord || authRecord.getString('papel') !== 'admin') {
@@ -850,60 +1009,125 @@ routerAdd('POST', '/backend/v1/sheets/sincronizar', (e) => {
     })
   }
 
-  let body = {}
+  let body
   try {
     body = e.requestInfo().body || {}
-  } catch (_) {}
+  } catch (_) {
+    return e.json(400, { sucesso: false, erro: 'Corpo da requisição inválido.' })
+  }
 
-  const spreadsheetId = (body.spreadsheet_id || '').trim()
-  const sheetRange = (body.sheet_range || 'A1:Z500').trim()
-  const signedJwt = (body.signed_jwt || '').trim()
-  let directToken = (body.access_token || '').trim()
+  let configs
+  try {
+    configs = e.app.findRecordsByFilter('google_sheets_config', '', '-created', 1, 0)
+  } catch (err) {
+    console.log('Erro ao carregar configuração do Google Sheets:', err)
+    return e.json(500, {
+      sucesso: false,
+      erro: 'Não foi possível carregar a configuração.',
+      mensagem: 'Não foi possível carregar a configuração.',
+      aceitos: 0,
+      rejeitados: 0,
+      itens: [],
+    })
+  }
+  if (configs.length === 0) {
+    return e.json(400, {
+      sucesso: false,
+      erro: 'Configure a integração Google Sheets primeiro.',
+      mensagem: 'Configure a integração Google Sheets primeiro.',
+      aceitos: 0,
+      rejeitados: 0,
+      itens: [],
+    })
+  }
+  const config = configs[0]
+  const spreadsheetId = (body.spreadsheet_id || config.getString('spreadsheet_id')).trim()
+  const sheetRange = (body.sheet_range || config.getString('sheet_range') || 'A1:Z500').trim()
+  let signedJwt
 
   if (!spreadsheetId) {
     return e.json(400, { sucesso: false, erro: 'ID da planilha Google não informado.' })
   }
 
-  if (!directToken && signedJwt) {
-    try {
-      const tokenUrl = 'https://oauth2.googleapis.com/token'
-      const postBody =
+  const encryptionKey = $os.getenv('GOOGLE_SHEETS_ENCRYPTION_KEY')
+  if (encryptionKey.length !== 32) {
+    return e.json(500, {
+      sucesso: false,
+      erro: 'A chave de criptografia do Google não está configurada no servidor.',
+      mensagem: 'A chave de criptografia do Google não está configurada no servidor.',
+      aceitos: 0,
+      rejeitados: 0,
+      itens: [],
+    })
+  }
+
+  try {
+    const encryptedCredential = config.getString('credential_encrypted')
+    if (!encryptedCredential) {
+      return e.json(400, {
+        sucesso: false,
+        erro: 'Configure uma credencial de serviço do Google.',
+        mensagem: 'Configure uma credencial de serviço do Google.',
+        aceitos: 0,
+        rejeitados: 0,
+        itens: [],
+      })
+    }
+    const serviceAccount = JSON.parse($security.decrypt(encryptedCredential, encryptionKey))
+    const jwtSigner = require(`${__hooks}/google_jwt.js`)
+    signedJwt = jwtSigner.signGoogleServiceAccountJwt(
+      serviceAccount.client_email,
+      serviceAccount.private_key,
+    )
+  } catch (err) {
+    console.log('Erro ao preparar autenticação Google Sheets:', err)
+    return e.json(500, {
+      sucesso: false,
+      erro: 'Não foi possível preparar a autenticação do Google.',
+      mensagem: 'Não foi possível preparar a autenticação do Google.',
+      aceitos: 0,
+      rejeitados: 0,
+      itens: [],
+    })
+  }
+
+  let directToken
+  try {
+    const tokenRes = $http.send({
+      method: 'POST',
+      url: 'https://oauth2.googleapis.com/token',
+      body:
         'grant_type=' +
         encodeURIComponent('urn:ietf:params:oauth:grant-type:jwt-bearer') +
         '&assertion=' +
-        encodeURIComponent(signedJwt)
-
-      const tokenRes = $http.send({
-        method: 'POST',
-        url: tokenUrl,
-        body: postBody,
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        timeout: 30,
-      })
-
-      if (tokenRes.statusCode !== 200) {
-        let errDesc = 'Erro ' + tokenRes.statusCode + ' ao obter token do Google'
-        try {
-          if (tokenRes.json && tokenRes.json.error_description)
-            errDesc = tokenRes.json.error_description
-          else if (tokenRes.json && tokenRes.json.error) errDesc = tokenRes.json.error
-        } catch (_) {}
-        return e.json(400, {
-          sucesso: false,
-          erro: 'Falha ao autenticar com Google OAuth2: ' + errDesc,
-        })
-      }
-      directToken = tokenRes.json.access_token
-    } catch (tErr) {
+        encodeURIComponent(signedJwt),
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      timeout: 30,
+    })
+    if (tokenRes.statusCode !== 200) {
+      const errDesc =
+        (tokenRes.json && (tokenRes.json.error_description || tokenRes.json.error)) ||
+        'Erro ao obter token do Google.'
       return e.json(400, {
         sucesso: false,
-        erro: 'Erro ao autenticar com Google: ' + (tErr.message || tErr),
+        erro: 'Falha na autenticação OAuth2 com o Google: ' + errDesc,
+        mensagem: 'Falha na autenticação OAuth2 com o Google.',
+        aceitos: 0,
+        rejeitados: 0,
+        itens: [],
       })
     }
-  }
-
-  if (!directToken) {
-    return e.json(400, { sucesso: false, erro: 'Token de acesso ou asserção JWT não informada.' })
+    directToken = tokenRes.json.access_token
+  } catch (err) {
+    console.log('Erro ao trocar JWT por token OAuth2 do Google:', err)
+    return e.json(502, {
+      sucesso: false,
+      erro: 'Não foi possível autenticar com o Google.',
+      mensagem: 'Não foi possível autenticar com o Google.',
+      aceitos: 0,
+      rejeitados: 0,
+      itens: [],
+    })
   }
 
   // Busca dados na API do Sheets
@@ -1270,13 +1494,12 @@ cronAdd('sync_google_sheets_d2', '*/15 * * * *', (app) => {
     const cfg = configs[0]
     const spreadsheetId = cfg.getString('spreadsheet_id')
     const sheetRange = cfg.getString('sheet_range') || 'A1:Z500'
-    const privKey = cfg.getString('private_key')
+    const encryptedCredential = cfg.getString('credential_encrypted')
     const clientEmail = cfg.getString('client_email')
+    const encryptionKey = $os.getenv('GOOGLE_SHEETS_ENCRYPTION_KEY')
 
-    if (!spreadsheetId || !privKey || !clientEmail) return
+    if (!spreadsheetId || !encryptedCredential || !clientEmail || encryptionKey.length !== 32) return
 
-    // Como o cron roda em background sem JWT externo, se houver falha de token,
-    // atualizamos o status para auditoria
     cfg.set('ultimo_status', 'agendado_ativo')
     app.save(cfg)
   } catch (cronErr) {

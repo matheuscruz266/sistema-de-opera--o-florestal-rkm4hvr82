@@ -25,6 +25,7 @@ import {
   IngestaoD2ItemPayload,
   IngestaoD2Response,
   GoogleSheetsConfigRecord,
+  GoogleServiceAccountKey,
   GoogleSheetsTestResponse,
   GoogleSheetsSyncResponse,
 } from '@/types/florestal'
@@ -534,58 +535,26 @@ export const apiService = {
 
   // Obter ou criar configuração da integração Google Sheets
   async getGoogleSheetsConfig(): Promise<GoogleSheetsConfigRecord | null> {
-    try {
-      const records = await pb
-        .collection('google_sheets_config')
-        .getList<GoogleSheetsConfigRecord>(1, 1, {
-          sort: '-created',
-        })
-      if (records.items.length > 0) {
-        return records.items[0]
-      }
-      return null
-    } catch (err) {
-      console.warn('Erro ao carregar google_sheets_config:', err)
-      return null
-    }
+    return await pb.send<GoogleSheetsConfigRecord | null>('/backend/v1/sheets/config', {
+      method: 'GET',
+    })
   },
 
   // Salvar configuração (cria ou atualiza)
   async salvarGoogleSheetsConfig(
     dados: Partial<GoogleSheetsConfigRecord>,
+    serviceAccount?: GoogleServiceAccountKey,
   ): Promise<GoogleSheetsConfigRecord> {
-    const configs = await pb
-      .collection('google_sheets_config')
-      .getList<GoogleSheetsConfigRecord>(1, 1, {
-        sort: '-created',
-      })
-    if (configs.items.length > 0) {
-      return await pb
-        .collection('google_sheets_config')
-        .update<GoogleSheetsConfigRecord>(configs.items[0].id, dados)
-    } else {
-      return await pb.collection('google_sheets_config').create<GoogleSheetsConfigRecord>({
-        nome: dados.nome || 'D2 Picador BRF Toledo',
-        spreadsheet_id: dados.spreadsheet_id || '',
-        sheet_range: dados.sheet_range || 'A1:Z50',
-        client_email: dados.client_email || '',
-        project_id: dados.project_id || '',
-        private_key: dados.private_key || '',
-        is_ativa: dados.is_ativa !== undefined ? dados.is_ativa : true,
-        sincronizacao_automatica: dados.sincronizacao_automatica || false,
-        intervalo_minutos: dados.intervalo_minutos || 15,
-        linhas_ingeridas_total: 0,
-        ultimo_status: 'pendente',
-      })
-    }
+    return await pb.send<GoogleSheetsConfigRecord>('/backend/v1/sheets/config', {
+      method: 'POST',
+      body: { ...dados, service_account: serviceAccount },
+    })
   },
 
   // Testar conexão com a API Google Sheets no backend
   async testarGoogleSheets(params: {
     spreadsheet_id: string
     sheet_range?: string
-    signed_jwt?: string
-    access_token?: string
   }): Promise<GoogleSheetsTestResponse> {
     try {
       const res = await pb.send<GoogleSheetsTestResponse>('/backend/v1/sheets/testar', {
@@ -606,8 +575,6 @@ export const apiService = {
   async sincronizarGoogleSheets(params: {
     spreadsheet_id: string
     sheet_range?: string
-    signed_jwt?: string
-    access_token?: string
   }): Promise<GoogleSheetsSyncResponse> {
     try {
       const res = await pb.send<GoogleSheetsSyncResponse>('/backend/v1/sheets/sincronizar', {

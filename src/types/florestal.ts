@@ -412,7 +412,7 @@ export interface GoogleSheetsConfigRecord {
   sheet_range?: string
   client_email?: string
   project_id?: string
-  private_key?: string
+  has_credentials: boolean
   is_ativa: boolean
   sincronizacao_automatica: boolean
   intervalo_minutos?: number

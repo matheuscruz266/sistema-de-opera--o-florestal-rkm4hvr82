@@ -1801,11 +1801,11 @@
       "name": "google_sheets_config",
       "type": "base",
       "apiRules": {
-        "list": "@request.auth.id != '' && @request.auth.papel = 'admin'",
-        "view": "@request.auth.id != '' && @request.auth.papel = 'admin'",
-        "create": "@request.auth.id != '' && @request.auth.papel = 'admin'",
-        "update": "@request.auth.id != '' && @request.auth.papel = 'admin'",
-        "delete": "@request.auth.id != '' && @request.auth.papel = 'admin'"
+        "list": null,
+        "view": null,
+        "create": null,
+        "update": null,
+        "delete": null
       },
       "fields": [
         {
@@ -1841,7 +1841,13 @@
         {
           "name": "private_key",
           "type": "text",
-          "required": true,
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "credential_encrypted",
+          "type": "text",
+          "required": false,
           "system": false
         },
         {

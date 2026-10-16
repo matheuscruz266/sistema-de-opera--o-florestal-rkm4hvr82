@@ -129,3 +129,32 @@ npm run build
 ```
 
 Os arquivos otimizados serão gerados na pasta `dist/` e estarão prontos para deploy.
+
+### Integração segura com Google Sheets
+
+A integração exige que `GOOGLE_SHEETS_ENCRYPTION_KEY` seja definida no ambiente do
+processo PocketBase. Gere um segredo aleatório de exatamente 32 caracteres (por
+exemplo, `openssl rand -hex 16`) e configure-o no servidor; não o coloque no
+frontend, em arquivos versionados ou no JSON da conta de serviço. Mantenha esse
+valor estável e faça backup seguro: a credencial armazenada não poderá ser
+descriptografada se ele for perdido ou trocado.
+
+Antes de iniciar o PocketBase com esta versão, configure a variável de ambiente
+para que a migração possa criptografar credenciais antigas. As novas credenciais
+inseridas na tela de Integrações são enviadas à rota administrativa do PocketBase,
+criptografadas no backend e nunca retornadas à aplicação. A coleção fica bloqueada
+para acesso direto pela API. Em produção, use HTTPS entre o navegador e a API.
+
+Gere o assinador RS256 usado pelos hooks junto com o deploy:
+
+```bash
+pnpm install --frozen-lockfile
+pnpm build:pocketbase-jwt
+```
+
+Distribua também `pocketbase/hooks/google_jwt.js`,
+`pocketbase/hooks/LICENSE-node-forge.txt` e
+`pocketbase/hooks/operacao_florestal.js` no diretório de hooks do servidor PocketBase.
+
+A sincronização periódica ainda não está disponível; até que o job de importação
+seja implementado, importe os dados pelo botão “Sincronizar Agora” na tela de Integrações.
