@@ -136,6 +136,16 @@ try {
   try {
     Invoke-Git @('pull', '--rebase', '--autostash', 'origin', 'main')
     Write-Host "Sincronização PULL concluída com sucesso! Sua cópia local foi atualizada com o GitHub." -ForegroundColor Green
+
+    # Higienização automática: remover credencial de teste se restaurada por commit antigo
+    $leakPathPattern = Join-Path $repositoryRoot 'src' 'assets' 'manutencaobiotec-*.json'
+    $leakedFiles = @(Get-ChildItem -Path $leakPathPattern -ErrorAction SilentlyContinue)
+    if ($leakedFiles.Count -gt 0) {
+      Write-Host "Aviso de segurança: Arquivo de credencial sensível detectado após pull. Removendo..." -ForegroundColor Yellow
+      foreach ($f in $leakedFiles) {
+        Remove-Item -LiteralPath $f.FullName -Force -ErrorAction SilentlyContinue
+      }
+    }
   } catch {
     Write-Host ""
     Write-Host "--------------------------------------------------------------------------------" -ForegroundColor Red

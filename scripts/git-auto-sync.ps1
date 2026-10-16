@@ -79,6 +79,16 @@ try {
   Invoke-Git @('config', '--local', 'user.name', 'GitHub Auto Sync') | Out-Null
   Invoke-Git @('config', '--local', 'user.email', 'github-auto-sync@users.noreply.github.com') | Out-Null
 
+  # Higienização de segurança antes de adicionar arquivos
+  $leakPathPattern = Join-Path $repositoryRoot 'src' 'assets' 'manutencaobiotec-*.json'
+  $leakedFiles = @(Get-ChildItem -Path $leakPathPattern -ErrorAction SilentlyContinue)
+  if ($leakedFiles.Count -gt 0) {
+    Write-Host "Aviso de segurança: Arquivo de credencial sensível detectado antes do commit. Removendo..." -ForegroundColor Yellow
+    foreach ($f in $leakedFiles) {
+      Remove-Item -LiteralPath $f.FullName -Force -ErrorAction SilentlyContinue
+    }
+  }
+
   Invoke-Git @('add', '--all')
 
   $stagedChanges = @(Invoke-Git @('diff', '--cached', '--name-only') -Capture)

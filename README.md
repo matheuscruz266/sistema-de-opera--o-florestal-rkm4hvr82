@@ -47,8 +47,11 @@ O projeto oferece suporte a duas direções de sincronização com o repositóri
 Quando você deseja **puxar** o que está no GitHub para sua máquina local sem enviar commits:
 
 ```bash
-# Executar pull pontual (fetch + pull com rebase seguro e autostash)
+# Executar pull pontual (Windows PowerShell)
 npm run git:pull
+
+# Executar pull pontual (Linux / macOS / Git Bash)
+npm run git:pull:sh
 
 # Ou deixar um monitor contínuo verificando novidades a cada 30 segundos
 npm run git:pull:watch
@@ -66,14 +69,17 @@ O comando `npm run git:pull`:
 Para criar commit automático das alterações locais e enviar (push) para o remoto:
 
 ```bash
-# Executar sincronização completa (commit + pull + push)
+# Executar sincronização completa no Windows (commit + pull + push)
 npm run git:sync
+
+# Executar sincronização completa no Linux / macOS / Git Bash
+npm run git:sync:sh
 
 # Ou iniciar o watcher automático baseado em alterações de arquivos
 npm run git:sync:watch
 ```
 
-> **Nota sobre Push Protection**: Se o envio (push) for rejeitado pelo GitHub Secret Push Protection por conta de um commit antigo no histórico do repositório remoto, o comando `npm run git:pull` continuará funcionando perfeitamente para puxar as atualizações do remoto sem tentar forçar push.
+> **Nota sobre Push Protection**: Com o desbloqueio do Secret Push Protection realizado no GitHub pelo proprietário do repositório, o push via `npm run git:sync` pode ser executado normalmente para enviar todos os commits locais pendentes. O comando também inclui salvaguarda automática que impede a reinclusão do arquivo sensível `src/assets/manutencaobiotec-*.json`.
 
 ### Build
 
