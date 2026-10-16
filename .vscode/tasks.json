@@ -4,10 +4,9 @@
     {
       "label": "Git: watch and synchronize with GitHub",
       "type": "process",
-      "command": "npm",
+      "command": "node",
       "args": [
-        "run",
-        "git:watch"
+        "${workspaceFolder}\\scripts\\git-auto-sync-watcher.mjs"
       ],
       "isBackground": true,
       "runOptions": {
