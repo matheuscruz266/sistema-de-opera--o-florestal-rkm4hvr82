@@ -13,6 +13,7 @@
     "lint:fix": "oxlint src --fix",
     "format": "oxfmt",
     "format:check": "oxfmt --check",
+    "git:sync": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/git-auto-sync.ps1",
     "preview": "vite preview",
     "test": "echo \"there are no tests for this project\" && exit 0",
     "test:watch": "echo \"there are no tests for this project\" && exit 0"

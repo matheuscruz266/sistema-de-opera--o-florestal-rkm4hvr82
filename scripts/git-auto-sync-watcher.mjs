@@ -6,7 +6,14 @@ import { fileURLToPath } from 'node:url'
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const debounceMs = 2000
 const pollIntervalMs = 30_000
-const ignoredDirectories = new Set(['.git', 'node_modules', 'dist', 'dist-ssr', 'dev-dist', 'dev-dist-ssr'])
+const ignoredDirectories = new Set([
+  '.git',
+  'node_modules',
+  'dist',
+  'dist-ssr',
+  'dev-dist',
+  'dev-dist-ssr',
+])
 let debounceTimer
 let pollTimer
 let syncProcess
@@ -40,7 +47,13 @@ function synchronize(reason) {
   console.log(`GitHub sync: ${reason}`)
   syncProcess = spawn(
     'powershell.exe',
-    ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', path.join(repositoryRoot, 'scripts', 'git-auto-sync.ps1')],
+    [
+      '-NoProfile',
+      '-ExecutionPolicy',
+      'Bypass',
+      '-File',
+      path.join(repositoryRoot, 'scripts', 'git-auto-sync.ps1'),
+    ],
     { cwd: repositoryRoot, stdio: 'inherit', windowsHide: true },
   )
 
@@ -65,11 +78,15 @@ function synchronize(reason) {
     }
 
     if (code !== 0) {
-      console.error(`GitHub sync failed with exit code ${code ?? 'unknown'}; it will retry in 30 seconds.`)
+      console.error(
+        `GitHub sync failed with exit code ${code ?? 'unknown'}; it will retry in 30 seconds.`,
+      )
     }
 
     pollTimer = setTimeout(() => {
-      void synchronize(code === 0 ? 'checking for updates from GitHub' : 'retrying after a sync failure')
+      void synchronize(
+        code === 0 ? 'checking for updates from GitHub' : 'retrying after a sync failure',
+      )
     }, pollIntervalMs)
   })
 }
@@ -79,7 +96,9 @@ let fileWatcher
 try {
   fileWatcher = watch(repositoryRoot, { recursive: true }, (_eventType, filename) => {
     if (!filename) {
-      console.warn('A file changed, but Windows did not report its path; syncing to ensure no change is missed.')
+      console.warn(
+        'A file changed, but Windows did not report its path; syncing to ensure no change is missed.',
+      )
       scheduleSync(debounceMs, 'detected a file change')
       return
     }
@@ -95,7 +114,9 @@ try {
 }
 
 if (fileWatcher) {
-  console.log('GitHub file watcher active (2-second save debounce; checks remote every 30 seconds).')
+  console.log(
+    'GitHub file watcher active (2-second save debounce; checks remote every 30 seconds).',
+  )
   scheduleSync(debounceMs, 'initial synchronization')
 
   function stopWatcher() {
