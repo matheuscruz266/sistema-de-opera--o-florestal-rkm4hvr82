@@ -836,4 +836,30 @@ export const apiService = {
       }
     }
   },
+
+  /**
+   * Limpar apenas o histórico de ingestão (admin only).
+   * Esvazia a coleção integracao_logs e zera contadores de linhas ingeridas da D2,
+   * sem apagar cadastros, históricos operacionais, importações já realizadas ou credenciais.
+   */
+  async limparHistoricoIngestao(): Promise<{
+    sucesso: boolean
+    mensagem?: string
+    erro?: string
+    total_logs_removidos?: number
+    configs_atualizadas?: number
+    preservados?: string[]
+  }> {
+    try {
+      const res = await pb.send<any>('/backend/v1/admin/limpar-historico-ingestao', {
+        method: 'POST',
+      })
+      return res
+    } catch (err: any) {
+      return {
+        sucesso: false,
+        erro: err?.data?.erro || err?.message || 'Falha ao limpar histórico de ingestão.',
+      }
+    }
+  },
 }

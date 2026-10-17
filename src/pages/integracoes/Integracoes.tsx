@@ -105,6 +105,11 @@ export default function IntegracoesPage() {
   const [purgandoBase, setPurgandoBase] = useState(false)
   const [confirmacaoPurgeTexto, setConfirmacaoPurgeTexto] = useState('')
 
+  // Modal e Ação de Limpar Apenas Histórico de Ingestão
+  const [modalLimparHistoricoOpen, setModalLimparHistoricoOpen] = useState(false)
+  const [limpandoHistorico, setLimpandoHistorico] = useState(false)
+  const [confirmacaoLimparTexto, setConfirmacaoLimparTexto] = useState('')
+
   // Controle de exibição de chaves na tabela
   const [chavesVisiveis, setChavesVisiveis] = useState<Record<string, boolean>>({})
   const [chaveCopiadaId, setChaveCopiadaId] = useState<string | null>(null)
@@ -499,6 +504,40 @@ export default function IntegracoesPage() {
       toast.error(err?.data?.erro || err?.message || 'Erro ao enviar dados para a API D2')
     } finally {
       setEnviandoSimulacao(false)
+    }
+  }
+
+  // Executar limpeza exclusiva do histórico de ingestão
+  const handleExecutarLimparHistorico = async () => {
+    if (!isAdmin) {
+      toast.error('Apenas Administradores podem limpar o histórico de ingestão.')
+      return
+    }
+    if (confirmacaoLimparTexto.trim().toUpperCase() !== 'LIMPAR') {
+      toast.error('Digite a palavra LIMPAR para confirmar a ação.')
+      return
+    }
+
+    setLimpandoHistorico(true)
+    try {
+      const res = await apiService.limparHistoricoIngestao()
+      if (res.sucesso) {
+        toast.success(
+          res.mensagem ||
+            'Histórico de ingestão limpo com sucesso! Eventos apagados e contadores zerados.',
+        )
+        setModalLimparHistoricoOpen(false)
+        setConfirmacaoLimparTexto('')
+        await Promise.all([loadLogs(1), loadSheetsConfig()])
+      } else {
+        toast.error(res.erro || 'Falha ao limpar histórico de ingestão.')
+      }
+    } catch (err: any) {
+      toast.error(
+        err?.data?.erro || err?.message || 'Erro ao processar limpeza do histórico de ingestão.',
+      )
+    } finally {
+      setLimpandoHistorico(false)
     }
   }
 
@@ -1056,7 +1095,7 @@ export default function IntegracoesPage() {
                 </span>
               </div>
 
-              {/* FILTROS */}
+              {/* FILTROS E AÇÃO DE LIMPAR HISTÓRICO */}
               <div className="flex items-center gap-2 flex-wrap">
                 <Select value={filtroCredencial} onValueChange={setFiltroCredencial}>
                   <SelectTrigger className="h-8 w-44 text-xs">
@@ -1097,6 +1136,23 @@ export default function IntegracoesPage() {
                     className={`w-3.5 h-3.5 ${refreshingLogs ? 'animate-spin text-[#1B5E20]' : ''}`}
                   />
                 </Button>
+
+                {isAdmin && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setConfirmacaoLimparTexto('')
+                      setModalLimparHistoricoOpen(true)
+                    }}
+                    disabled={refreshingLogs || totalLogs === 0}
+                    className="h-8 text-xs border-amber-300 text-amber-800 hover:bg-amber-50 hover:text-amber-900 font-medium"
+                    title="Limpar apenas os registros de chamadas e eventos de ingestão"
+                  >
+                    <Trash2 className="w-3.5 h-3.5 mr-1 text-amber-700" />
+                    Limpar Histórico de Ingestão
+                  </Button>
+                )}
               </div>
             </CardHeader>
 
@@ -1699,6 +1755,111 @@ export default function IntegracoesPage() {
               className="bg-[#1A2E1A] hover:bg-neutral-800 text-white w-full sm:w-auto"
             >
               Entendido e Copiado
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* MODAL LIMPAR HISTÓRICO DE INGESTÃO (ADMIN ONLY) */}
+      <Dialog open={modalLimparHistoricoOpen} onOpenChange={setModalLimparHistoricoOpen}>
+        <DialogContent className="sm:max-w-lg border-amber-300">
+          <DialogHeader>
+            <DialogTitle className="text-lg text-amber-950 flex items-center gap-2">
+              <Trash2 className="w-5 h-5 text-amber-600" />
+              Limpar Histórico de Ingestão
+            </DialogTitle>
+            <DialogDescription className="text-xs text-[#5A6D5A]">
+              Esta ação apaga <strong>
+                apenas o registro de eventos/chamadas de ingestão
+              </strong> e
+              zera os contadores de sincronização da integração D2, preservando todos os dados
+              importados.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3.5 py-1 text-xs">
+            <div className="p-3 bg-amber-50/80 border border-amber-200 rounded-lg text-amber-950 space-y-2">
+              <div className="font-semibold flex items-center gap-1.5 text-amber-800">
+                <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                O que será excluído (zerado):
+              </div>
+              <ul className="list-disc pl-4 space-y-0.5 text-[11px] text-amber-900/90 leading-relaxed">
+                <li>
+                  <strong>Auditoria de chamadas:</strong> Todos os registros da tabela de logs de
+                  ingestão ({totalLogs} eventos registrados).
+                </li>
+                <li>
+                  <strong>Contador de ingestão:</strong> Contagem de linhas ingeridas da integração
+                  D2 Google Sheets volta a zero.
+                </li>
+              </ul>
+            </div>
+
+            <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-emerald-950 space-y-1">
+              <div className="font-semibold flex items-center gap-1.5 text-emerald-800">
+                <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+                O que será PRESERVADO intacto (não será apagado):
+              </div>
+              <ul className="list-disc pl-4 space-y-0.5 text-[11px] text-emerald-900 leading-relaxed">
+                <li>
+                  <strong>Cadastros:</strong> Fazendas, Talhões, Máquinas, Caminhões, Pilhas e
+                  Usuários mantidos.
+                </li>
+                <li>
+                  <strong>Dados operacionais já importados:</strong> Expedições do Picador, baldeio,
+                  descarga, feller, skidder e medições do ToraCerta continuam salvos.
+                </li>
+                <li>
+                  <strong>Chaves de API & Conexões:</strong> Credenciais de API e a conexão Google
+                  Sheets D2 permanecem ativas e funcionais.
+                </li>
+              </ul>
+            </div>
+
+            <div className="space-y-1.5 pt-1">
+              <Label className="text-xs font-semibold text-[#1A2E1A]">
+                Para confirmar a limpeza do histórico, digite{' '}
+                <span className="text-amber-800 font-mono font-bold">LIMPAR</span> abaixo:
+              </Label>
+              <Input
+                placeholder="Digite LIMPAR"
+                value={confirmacaoLimparTexto}
+                onChange={(e) => setConfirmacaoLimparTexto(e.target.value)}
+                className="h-9 font-mono tracking-wider border-amber-300 focus:border-amber-600 focus:ring-amber-500 text-xs"
+              />
+            </div>
+          </div>
+
+          <DialogFooter className="pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={limpandoHistorico}
+              onClick={() => setModalLimparHistoricoOpen(false)}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              disabled={
+                limpandoHistorico || confirmacaoLimparTexto.trim().toUpperCase() !== 'LIMPAR'
+              }
+              onClick={handleExecutarLimparHistorico}
+              className="bg-amber-700 hover:bg-amber-800 text-white font-semibold"
+            >
+              {limpandoHistorico ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                  Limpando histórico...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="w-3.5 h-3.5 mr-1.5" />
+                  Confirmar e Limpar Histórico
+                </>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

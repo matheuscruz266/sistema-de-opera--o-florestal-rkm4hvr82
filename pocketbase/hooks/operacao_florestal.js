@@ -3464,6 +3464,72 @@ routerAdd('POST', '/backend/v1/admin/purge', (e) => {
 })
 
 // ==============================================================================
+// 4.1 ENDPOINT ADMINISTRATIVO: LIMPAR APENAS HISTÓRICO DE INGESTÃO
+// Exige autenticação de Administrador (e.auth && papel === 'admin')
+// Deleta APENAS todos os registros da coleção `integracao_logs`
+// Zera o contador de linhas ingeridas da integração D2 (google_sheets_config)
+// NÃO apaga cadastros, históricos operacionais, importações já realizadas,
+// chaves de API nem configurações de conexão
+// ==============================================================================
+routerAdd('POST', '/backend/v1/admin/limpar-historico-ingestao', (e) => {
+  const authRecord = e.auth
+  if (!authRecord || authRecord.getString('papel') !== 'admin') {
+    return e.json(403, {
+      sucesso: false,
+      erro: 'Acesso negado. Apenas usuários com papel "admin" podem limpar o histórico de ingestão.',
+    })
+  }
+
+  let totalLogsRemovidos = 0
+  try {
+    if (e.app.hasTable('integracao_logs')) {
+      const logsCol = e.app.findCollectionByNameOrId('integracao_logs')
+      try {
+        totalLogsRemovidos = e.app.countRecords('integracao_logs')
+      } catch (_) {}
+      e.app.truncateCollection(logsCol)
+    }
+  } catch (err) {
+    console.log('Erro ao truncar integracao_logs:', err)
+    return e.json(500, {
+      sucesso: false,
+      erro: 'Falha ao limpar a coleção de histórico de ingestão: ' + err,
+    })
+  }
+
+  // Zera contadores de linhas ingeridas da integração D2 (google_sheets_config)
+  let configsAtualizadas = 0
+  try {
+    if (e.app.hasTable('google_sheets_config')) {
+      const sheetsConfigs = e.app.findRecordsByFilter('google_sheets_config', '', '', 100, 0)
+      for (let s = 0; s < sheetsConfigs.length; s++) {
+        const sc = sheetsConfigs[s]
+        sc.set('linhas_ingeridas_total', 0)
+        e.app.save(sc)
+        configsAtualizadas++
+      }
+    }
+  } catch (errSheets) {
+    console.log('Aviso ao zerar contador da google_sheets_config:', errSheets)
+  }
+
+  return e.json(200, {
+    sucesso: true,
+    mensagem:
+      'Histórico de ingestão limpo com sucesso. Registros de eventos excluídos e contadores de ingestão zerados.',
+    total_logs_removidos: totalLogsRemovidos,
+    configs_atualizadas: configsAtualizadas,
+    preservados: [
+      'Cadastros e dados operacionais (mantidos intactos)',
+      'Importações já realizadas e históricos de produção (preservados)',
+      'Chaves de API e credenciais de integração (ativas)',
+      'Conexão Google Sheets e mapeamentos (preservados)',
+    ],
+    timestamp: new Date().toISOString(),
+  })
+})
+
+// ==============================================================================
 // 5. CHAT COM AGENTE NATIVO DO SKIP CLOUD (Apoio - Florestal)
 // Integração oficial via $ai.agent(slug) com persistência por usuário
 // Slug padrão: "apoio-florestal" (configurável via query ou body)
