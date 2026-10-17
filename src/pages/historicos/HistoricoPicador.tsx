@@ -110,9 +110,9 @@ export default function HistoricoPicadorPage() {
     setConversaoCavacoId(item.conversao_cavaco_id || '')
     setNotaFiscal(item.nota_fiscal)
     setDataHoraExpedicao(item.data_hora_expedicao)
-    setVolumeCavacoM3(item.volume_cavaco_m3)
+    setVolumeCavacoM3(item.volume_cavaco_m3 ?? '')
     setPesoCavacoT(item.peso_cavaco_t ?? '')
-    setVolumeToraConsumidoM3(item.volume_tora_consumido_m3)
+    setVolumeToraConsumidoM3(item.volume_tora_consumido_m3 ?? '')
     setCliente(item.cliente || '')
     setUmidadePerc(item.umidade_perc ?? '')
     setOperadorNome(item.operador_nome || '')
@@ -145,6 +145,7 @@ export default function HistoricoPicadorPage() {
         volume_cavaco_m3: Number(volumeCavacoM3),
         peso_cavaco_t: pesoCavacoT === '' ? undefined : Number(pesoCavacoT),
         volume_tora_consumido_m3: Number(volumeToraConsumidoM3),
+        status_calculo: 'calculado',
         cliente: cliente.trim(),
         umidade_perc: umidadePerc === '' ? undefined : Number(umidadePerc),
         operador_nome: operadorNome.trim() || user?.name || 'Operador',
@@ -252,6 +253,7 @@ export default function HistoricoPicadorPage() {
                   <th className="py-3 px-4 text-right">Cavaco (m³)</th>
                   <th className="py-3 px-4 text-right">Peso Cavaco (t)</th>
                   <th className="py-3 px-4 text-right">Tora Consumida (m³)</th>
+                  <th className="py-3 px-4">Cálculo</th>
                   <th className="py-3 px-4">Cliente Destino</th>
                   <th className="py-3 px-4 text-right">Ações</th>
                 </tr>
@@ -273,13 +275,34 @@ export default function HistoricoPicadorPage() {
                       {item.expand?.pilha_origem_id?.codigo || '-'}
                     </td>
                     <td className="py-3 px-4 text-right font-mono font-bold text-[#FF8F00]">
-                      {item.volume_cavaco_m3.toFixed(1)} m³
+                      {item.volume_cavaco_m3 != null
+                        ? `${item.volume_cavaco_m3.toFixed(1)} m³`
+                        : '-'}
                     </td>
                     <td className="py-3 px-4 text-right font-mono text-[#5A6D5A]">
                       {item.peso_cavaco_t ? `${item.peso_cavaco_t.toFixed(1)} t` : '-'}
                     </td>
                     <td className="py-3 px-4 text-right font-mono font-bold text-[#C62828]">
-                      -{item.volume_tora_consumido_m3.toFixed(2)} m³
+                      {item.volume_tora_consumido_m3 != null
+                        ? `-${item.volume_tora_consumido_m3.toFixed(2)} m³`
+                        : '-'}
+                    </td>
+                    <td className="py-3 px-4">
+                      <span
+                        className={`rounded-full px-2 py-1 text-[10px] font-semibold ${
+                          item.status_calculo === 'pendente' ||
+                          item.volume_cavaco_m3 == null ||
+                          item.volume_tora_consumido_m3 == null
+                            ? 'bg-amber-100 text-amber-800'
+                            : 'bg-emerald-100 text-emerald-800'
+                        }`}
+                      >
+                        {item.status_calculo === 'pendente' ||
+                        item.volume_cavaco_m3 == null ||
+                        item.volume_tora_consumido_m3 == null
+                          ? 'Pendente'
+                          : 'Calculado'}
+                      </span>
                     </td>
                     <td className="py-3 px-4 text-[#1A2E1A] font-medium">{item.cliente || '-'}</td>
                     <td className="py-3 px-4 text-right">

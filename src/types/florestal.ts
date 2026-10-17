@@ -239,9 +239,10 @@ export interface HistoricoPicador {
   pilha_origem_id: string
   nota_fiscal: string
   data_hora_expedicao: string
-  volume_cavaco_m3: number
-  peso_cavaco_t?: number
-  volume_tora_consumido_m3: number
+  volume_cavaco_m3?: number | null
+  peso_cavaco_t?: number | null
+  volume_tora_consumido_m3?: number | null
+  status_calculo?: 'pendente' | 'calculado'
   cliente?: string
   umidade_perc?: number
   operador_nome?: string

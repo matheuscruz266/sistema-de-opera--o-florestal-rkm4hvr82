@@ -1964,17 +1964,19 @@ routerAdd('POST', '/backend/v1/importador/executar', (e) => {
     if (cvt.length > 0) defaultConvTorasId = cvt[0].id
   } catch (_) {}
 
-  let defaultConvCavacoId = ''
+  let conversoesCavacoVigentes = []
   try {
     const cvc = e.app.findRecordsByFilter(
       'conversao_sr_cavaco',
       'is_vigente = true',
       '-created',
-      1,
+      1000,
       0,
     )
-    if (cvc.length > 0) defaultConvCavacoId = cvc[0].id
-  } catch (_) {}
+    conversoesCavacoVigentes = cvc
+  } catch (err) {
+    console.log('Erro ao carregar conversões vigentes SR_Cavaco:', err)
+  }
 
   // Ordena bases: Cadastros primeiro, depois Históricos
   const basesOrdenadas = basesConfigs
@@ -2569,6 +2571,7 @@ routerAdd('POST', '/backend/v1/importador/executar', (e) => {
             'tora_consumida',
             'consumo_tora_m3',
           ],
+          id_carreta: ['id_carreta', 'carreta_id'],
           pilha_origem_id: [
             'pilha_origem_id',
             'pilha',
@@ -3023,7 +3026,61 @@ routerAdd('POST', '/backend/v1/importador/executar', (e) => {
           if (cmId) rec.set('caminhao_id', cmId)
           const plOrig = resolverFK('pilhas', dados.pilha_origem_id || dados.pilha || dados.origem)
           if (plOrig) rec.set('pilha_origem_id', plOrig)
-          if (defaultConvCavacoId) rec.set('conversao_cavaco_id', defaultConvCavacoId)
+          const idCarretaInformado = (
+            dados.id_carreta ||
+            dados.carreta_id ||
+            dados.carreta ||
+            dados.caminhao_id ||
+            dados.placa ||
+            dados.caminhao ||
+            ''
+          )
+            .toString()
+            .trim()
+          const idCarretaNormalizado = normalizarChave(idCarretaInformado)
+          let conversaoCavaco = idCarretaNormalizado
+            ? conversoesCavacoVigentes.find(
+                (conversao) =>
+                  normalizarChave(conversao.getString('id_carreta')) === idCarretaNormalizado,
+              )
+            : null
+          if (conversaoCavaco) rec.set('conversao_cavaco_id', conversaoCavaco.id)
+
+          const capacidadeCavaco = conversaoCavaco
+            ? conversaoCavaco.getFloat('capacidade_m3')
+            : Number.parseFloat(String(dados.volume_cavaco_m3 || dados.volume || '').replace(',', '.'))
+          const fatorPeso = conversaoCavaco ? conversaoCavaco.getFloat('fator_t_m3') : null
+          const volumeCavacoValido = Number.isFinite(capacidadeCavaco) && capacidadeCavaco > 0
+          if (volumeCavacoValido) {
+            rec.set('volume_cavaco_m3', capacidadeCavaco)
+            rec.set('volume_tora_consumido_m3', Number((capacidadeCavaco / 0.93).toFixed(2)))
+          } else if (dados.volume_tora_consumido_m3 != null && dados.volume_tora_consumido_m3 !== '') {
+            const volumeToraInformado = Number.parseFloat(
+              String(dados.volume_tora_consumido_m3).replace(',', '.'),
+            )
+            if (Number.isFinite(volumeToraInformado)) {
+              rec.set('volume_tora_consumido_m3', volumeToraInformado)
+            }
+          }
+
+          if (
+            conversaoCavaco &&
+            volumeCavacoValido &&
+            Number.isFinite(fatorPeso) &&
+            fatorPeso > 0
+          ) {
+            const cargaEstimada = capacidadeCavaco * fatorPeso
+            if (Number.isFinite(cargaEstimada)) {
+              rec.set('peso_cavaco_t', Number(cargaEstimada.toFixed(2)))
+            }
+            rec.set('status_calculo', 'calculado')
+          } else {
+            const pesoInformado = Number.parseFloat(
+              String(dados.peso_cavaco_t || '').replace(',', '.'),
+            )
+            if (Number.isFinite(pesoInformado)) rec.set('peso_cavaco_t', pesoInformado)
+            rec.set('status_calculo', 'pendente')
+          }
           rec.set(
             'data_hora_expedicao',
             (
@@ -3032,15 +3089,6 @@ routerAdd('POST', '/backend/v1/importador/executar', (e) => {
               dados.data ||
               new Date().toISOString()
             ).toString(),
-          )
-          const vCav =
-            parseFloat(String(dados.volume_cavaco_m3 || dados.volume || 0).replace(',', '.')) || 0
-          rec.set('volume_cavaco_m3', vCav)
-          if (dados.peso_cavaco_t != null)
-            rec.set('peso_cavaco_t', parseFloat(String(dados.peso_cavaco_t).replace(',', '.')) || 0)
-          rec.set(
-            'volume_tora_consumido_m3',
-            parseFloat(String(dados.volume_tora_consumido_m3 || vCav * 0.4).replace(',', '.')) || 0,
           )
           if (dados.cliente) rec.set('cliente', dados.cliente.toString())
           if (dados.umidade_perc != null)
@@ -3188,6 +3236,16 @@ routerAdd('POST', '/backend/v1/importador/executar', (e) => {
       e.app.save(cfg)
     }
   } catch (_) {}
+
+  const basesComFalha = resultadoGeral.bases.filter((base) => base.status !== 'sucesso')
+  resultadoGeral.sucesso = basesComFalha.length === 0
+  for (let i = 0; i < basesComFalha.length; i++) {
+    const base = basesComFalha[i]
+    const resumoErro = `Base ${base.nome}: status ${base.status}; ${base.inseridos} inserido(s), ${base.atualizados} atualizado(s), ${base.rejeitados} rejeitado(s).`
+    if (!resultadoGeral.erros.some((erro) => erro.startsWith(`[${base.nome} `))) {
+      resultadoGeral.erros.push(resumoErro)
+    }
+  }
 
   return e.json(200, resultadoGeral)
 })
