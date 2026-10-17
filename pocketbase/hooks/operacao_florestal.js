@@ -2571,7 +2571,7 @@ routerAdd('POST', '/backend/v1/importador/executar', (e) => {
             'tora_consumida',
             'consumo_tora_m3',
           ],
-          id_carreta: ['id_carreta', 'carreta_id'],
+          id_carreta: ['id_carreta', 'carreta_id', 'sr_cavaco'],
           pilha_origem_id: [
             'pilha_origem_id',
             'pilha',

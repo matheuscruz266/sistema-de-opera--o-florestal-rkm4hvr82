@@ -776,7 +776,7 @@ export const BASES_IMPORTADOR_CATALOGO: BaseImportadorDefinicao[] = [
         campo: 'id_carreta',
         label: 'ID da Carreta (tabela SR_Cavaco)',
         obrigatorio: false,
-        sugestoesCabecalho: ['id_carreta', 'carreta_id'],
+        sugestoesCabecalho: ['id_carreta', 'carreta_id', 'sr_cavaco'],
       },
       {
         campo: 'data_hora_expedicao',
