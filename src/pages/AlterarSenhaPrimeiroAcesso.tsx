@@ -35,8 +35,7 @@ export default function AlterarSenhaPrimeiroAcessoPage() {
   const authRecord = pb.authStore.record
   const accountId = user?.id || authRecord?.id
   const accountEmail = user?.email || authRecord?.email
-  const mustChangePassword =
-    user?.must_change_password ?? authRecord?.must_change_password ?? false
+  const mustChangePassword = user?.must_change_password ?? authRecord?.must_change_password ?? false
 
   if (!accountId) return <Navigate to="/login" replace />
   if (!mustChangePassword) return <Navigate to="/" replace />
@@ -75,9 +74,7 @@ export default function AlterarSenhaPrimeiroAcessoPage() {
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-[#1B5E20] text-white shadow-lg mb-3">
             <Trees className="w-9 h-9" />
           </div>
-          <h1 className="text-2xl font-bold tracking-tight text-[#1A2E1A]">
-            Operação Florestal
-          </h1>
+          <h1 className="text-2xl font-bold tracking-tight text-[#1A2E1A]">Operação Florestal</h1>
         </div>
 
         <Card className="border-[#DDE4DE] shadow-md bg-white">

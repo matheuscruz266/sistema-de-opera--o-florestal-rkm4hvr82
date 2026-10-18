@@ -47,12 +47,7 @@ import { toast } from 'sonner'
 import { useAuth } from '@/context/AuthContext'
 
 function gerarSenhaTemporaria(): string {
-  const grupos = [
-    'ABCDEFGHJKLMNPQRSTUVWXYZ',
-    'abcdefghijkmnopqrstuvwxyz',
-    '23456789',
-    '!@#$%&*',
-  ]
+  const grupos = ['ABCDEFGHJKLMNPQRSTUVWXYZ', 'abcdefghijkmnopqrstuvwxyz', '23456789', '!@#$%&*']
   const todosCaracteres = grupos.join('')
   const bytes = new Uint32Array(20)
   window.crypto.getRandomValues(bytes)
@@ -99,9 +94,10 @@ export default function UsuariosPage() {
   const [email, setEmail] = useState('')
   const [temporaryPassword, setTemporaryPassword] = useState('')
   const [credentialDialogOpen, setCredentialDialogOpen] = useState(false)
-  const [createdCredential, setCreatedCredential] = useState<{ email: string; password: string } | null>(
-    null,
-  )
+  const [createdCredential, setCreatedCredential] = useState<{
+    email: string
+    password: string
+  } | null>(null)
   const [papel, setPapel] = useState<PapelUsuario>('operador')
   const [status, setStatus] = useState<boolean>(true)
 

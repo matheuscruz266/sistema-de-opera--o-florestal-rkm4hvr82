@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-17T02:00:51.907Z",
+  "generatedAt": "2026-10-18T16:14:38.675Z",
   "collections": [
     {
       "name": "users",
@@ -52,14 +52,14 @@
           "system": false
         },
         {
-          "name": "must_change_password",
-          "type": "bool",
+          "name": "app_sheet_id",
+          "type": "text",
           "required": false,
           "system": false
         },
         {
-          "name": "app_sheet_id",
-          "type": "text",
+          "name": "must_change_password",
+          "type": "bool",
           "required": false,
           "system": false
         }
@@ -1311,8 +1311,7 @@
           "type": "select",
           "required": false,
           "system": false,
-          "values": ["pendente", "calculado"],
-          "maxSelect": 1
+          "selectValues": ["pendente", "calculado"]
         }
       ],
       "indexes": ["CREATE UNIQUE INDEX idx_picador_nota ON historico_picador (nota_fiscal)"]

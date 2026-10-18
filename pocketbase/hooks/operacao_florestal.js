@@ -3048,13 +3048,18 @@ routerAdd('POST', '/backend/v1/importador/executar', (e) => {
 
           const capacidadeCavaco = conversaoCavaco
             ? conversaoCavaco.getFloat('capacidade_m3')
-            : Number.parseFloat(String(dados.volume_cavaco_m3 || dados.volume || '').replace(',', '.'))
+            : Number.parseFloat(
+                String(dados.volume_cavaco_m3 || dados.volume || '').replace(',', '.'),
+              )
           const fatorPeso = conversaoCavaco ? conversaoCavaco.getFloat('fator_t_m3') : null
           const volumeCavacoValido = Number.isFinite(capacidadeCavaco) && capacidadeCavaco > 0
           if (volumeCavacoValido) {
             rec.set('volume_cavaco_m3', capacidadeCavaco)
             rec.set('volume_tora_consumido_m3', Number((capacidadeCavaco / 0.93).toFixed(2)))
-          } else if (dados.volume_tora_consumido_m3 != null && dados.volume_tora_consumido_m3 !== '') {
+          } else if (
+            dados.volume_tora_consumido_m3 != null &&
+            dados.volume_tora_consumido_m3 !== ''
+          ) {
             const volumeToraInformado = Number.parseFloat(
               String(dados.volume_tora_consumido_m3).replace(',', '.'),
             )

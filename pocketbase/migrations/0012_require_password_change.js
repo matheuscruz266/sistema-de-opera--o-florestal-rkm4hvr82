@@ -8,8 +8,8 @@ migrate(
           required: false,
         }),
       )
+      app.save(users)
     }
-    app.save(users)
   },
   (app) => {
     const users = app.findCollectionByNameOrId('users')
