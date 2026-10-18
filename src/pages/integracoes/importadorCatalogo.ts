@@ -773,10 +773,17 @@ export const BASES_IMPORTADOR_CATALOGO: BaseImportadorDefinicao[] = [
         ],
       },
       {
-        campo: 'id_carreta',
-        label: 'ID da Carreta (tabela SR_Cavaco)',
+        campo: 'status_picador',
+        label: 'Status Picador (filtro de importação)',
         obrigatorio: false,
-        sugestoesCabecalho: ['id_carreta', 'carreta_id', 'sr_cavaco'],
+        sugestoesCabecalho: ['status_picador', 'status picador'],
+      },
+      {
+        campo: 'conversao_cavaco_id',
+        label: 'ID do registro SR_Cavaco',
+        tipo: 'relation',
+        obrigatorio: false,
+        sugestoesCabecalho: ['SR_Cavaco', 'conversao_cavaco_id', 'id_conversao_sr_cavaco'],
       },
       {
         campo: 'data_hora_expedicao',

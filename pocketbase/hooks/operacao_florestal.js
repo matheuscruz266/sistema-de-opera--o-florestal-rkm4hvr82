@@ -1707,9 +1707,11 @@ routerAdd('POST', '/backend/v1/importador/previa', (e) => {
     }
 
     const cabecalhos = rows[0].map((h) => (h || '').toString().trim())
-    const numRows = rows.length - 1
-    basePrevia.total_linhas = numRows
-    previaResultado.resumo_geral.total_linhas += numRows
+    if (destinoTabela !== 'historico_picador') {
+      const numRows = rows.length - 1
+      basePrevia.total_linhas = numRows
+      previaResultado.resumo_geral.total_linhas += numRows
+    }
 
     // Localiza o índice da coluna ID único
     let idxColId = -1
@@ -1730,6 +1732,24 @@ routerAdd('POST', '/backend/v1/importador/previa', (e) => {
       })
     }
 
+    const idxStatusPicador =
+      destinoTabela === 'historico_picador'
+        ? cabecalhos.findIndex(
+            (h) =>
+              mapeamento[h] === 'status_picador' ||
+              h.toLowerCase().replace(/[^a-z0-9]/g, '') === 'statuspicador',
+          )
+        : -1
+    if (destinoTabela === 'historico_picador' && idxStatusPicador < 0) {
+      const erroStatus = 'Coluna status_picador não encontrada ou não mapeada.'
+      basePrevia.erro = erroStatus
+      basePrevia.rejeitar = 1
+      basePrevia.rejeitados_lista.push({ linha: 1, motivo: erroStatus })
+      previaResultado.resumo_geral.total_rejeitar++
+      previaResultado.bases.push(basePrevia)
+      continue
+    }
+
     const cacheTabela = mapasExistentes[destinoTabela] || { porAppSheetId: {}, porId: {}, total: 0 }
 
     for (let r = 1; r < rows.length; r++) {
@@ -1737,6 +1757,13 @@ routerAdd('POST', '/backend/v1/importador/previa', (e) => {
       const linhaNum = r + 1
       if (!row || row.length === 0 || row.every((c) => !c || c.toString().trim() === '')) {
         continue
+      }
+
+      if (destinoTabela === 'historico_picador') {
+        const statusPicador = (row[idxStatusPicador] || '').toString().trim().toLowerCase()
+        if (statusPicador !== 'carregamento') continue
+        basePrevia.total_linhas++
+        previaResultado.resumo_geral.total_linhas++
       }
 
       // Extrai ID único da linha
@@ -1963,20 +1990,6 @@ routerAdd('POST', '/backend/v1/importador/executar', (e) => {
     )
     if (cvt.length > 0) defaultConvTorasId = cvt[0].id
   } catch (_) {}
-
-  let conversoesCavacoVigentes = []
-  try {
-    const cvc = e.app.findRecordsByFilter(
-      'conversao_sr_cavaco',
-      'is_vigente = true',
-      '-created',
-      1000,
-      0,
-    )
-    conversoesCavacoVigentes = cvc
-  } catch (err) {
-    console.log('Erro ao carregar conversões vigentes SR_Cavaco:', err)
-  }
 
   // Ordena bases: Cadastros primeiro, depois Históricos
   const basesOrdenadas = basesConfigs
@@ -2301,8 +2314,28 @@ routerAdd('POST', '/backend/v1/importador/executar', (e) => {
     }
 
     const cabecalhos = rows[0].map((h) => (h || '').toString().trim())
-    baseRes.linhas_lidas = rows.length - 1
-    resultadoGeral.total_linhas_processadas += rows.length - 1
+    const idxStatusPicador =
+      destinoTabela === 'historico_picador'
+        ? cabecalhos.findIndex(
+            (h) =>
+              mapeamento[h] === 'status_picador' ||
+              normalizarChave(h).replace(/_/g, '') === 'statuspicador',
+          )
+        : -1
+    if (destinoTabela === 'historico_picador' && idxStatusPicador < 0) {
+      const erroStatus = 'Coluna status_picador não encontrada ou não mapeada.'
+      baseRes.status = 'erro'
+      baseRes.rejeitados = 1
+      baseRes.erro = erroStatus
+      resultadoGeral.total_rejeitados++
+      resultadoGeral.erros.push(`Aba ${bCfg.aba}: ${erroStatus}`)
+      resultadoGeral.bases.push(baseRes)
+      continue
+    }
+    if (destinoTabela !== 'historico_picador') {
+      baseRes.linhas_lidas = rows.length - 1
+      resultadoGeral.total_linhas_processadas += rows.length - 1
+    }
 
     // Localiza índice da coluna ID do AppSheet
     let idxColId = -1
@@ -2338,6 +2371,12 @@ routerAdd('POST', '/backend/v1/importador/executar', (e) => {
       const linhaNum = r + 1
       if (!row || row.length === 0 || row.every((c) => !c || c.toString().trim() === '')) {
         continue
+      }
+
+      if (destinoTabela === 'historico_picador') {
+        if (normalizarChave(row[idxStatusPicador]) !== 'carregamento') continue
+        baseRes.linhas_lidas++
+        resultadoGeral.total_linhas_processadas++
       }
 
       const rawIdVal =
@@ -2571,7 +2610,12 @@ routerAdd('POST', '/backend/v1/importador/executar', (e) => {
             'tora_consumida',
             'consumo_tora_m3',
           ],
-          id_carreta: ['id_carreta', 'carreta_id', 'sr_cavaco'],
+          conversao_cavaco_id: [
+            'conversao_cavaco_id',
+            'sr_cavaco',
+            'id_conversao_sr_cavaco',
+          ],
+          status_picador: ['status_picador'],
           pilha_origem_id: [
             'pilha_origem_id',
             'pilha',
@@ -2597,6 +2641,13 @@ routerAdd('POST', '/backend/v1/importador/executar', (e) => {
 
         if (campoMapeado && campoMapeado !== '__ignorar__') {
           dados[campoMapeado] = val
+          if (
+            destinoTabela === 'historico_picador' &&
+            campoMapeado === 'id_carreta' &&
+            normalizarChave(colHeader) === 'sr_cavaco'
+          ) {
+            dados.conversao_cavaco_id = val
+          }
         } else if (!campoMapeado) {
           // Normaliza nome do cabeçalho sem acento e caracteres especiais
           const colNorm = normalizarChave(colHeader)
@@ -3026,46 +3077,28 @@ routerAdd('POST', '/backend/v1/importador/executar', (e) => {
           if (cmId) rec.set('caminhao_id', cmId)
           const plOrig = resolverFK('pilhas', dados.pilha_origem_id || dados.pilha || dados.origem)
           if (plOrig) rec.set('pilha_origem_id', plOrig)
-          const idCarretaInformado = (
-            dados.id_carreta ||
-            dados.carreta_id ||
-            dados.carreta ||
-            dados.caminhao_id ||
-            dados.placa ||
-            dados.caminhao ||
-            ''
-          )
-            .toString()
-            .trim()
-          const idCarretaNormalizado = normalizarChave(idCarretaInformado)
-          let conversaoCavaco = idCarretaNormalizado
-            ? conversoesCavacoVigentes.find(
-                (conversao) =>
-                  normalizarChave(conversao.getString('id_carreta')) === idCarretaNormalizado,
-              )
-            : null
-          if (conversaoCavaco) rec.set('conversao_cavaco_id', conversaoCavaco.id)
+          const conversaoId = (dados.conversao_cavaco_id || '').toString().trim()
+          let conversaoCavaco = null
+          if (conversaoId) {
+            try {
+              conversaoCavaco = e.app.findRecordById('conversao_sr_cavaco', conversaoId)
+            } catch (errConversao) {
+              console.log(`Conversão SR_Cavaco "${conversaoId}" não encontrada:`, errConversao)
+            }
+          }
+          rec.set('conversao_cavaco_id', conversaoCavaco ? conversaoCavaco.id : '')
+          rec.set('volume_cavaco_m3', null)
+          rec.set('peso_cavaco_t', null)
+          rec.set('volume_tora_consumido_m3', null)
 
           const capacidadeCavaco = conversaoCavaco
             ? conversaoCavaco.getFloat('capacidade_m3')
-            : Number.parseFloat(
-                String(dados.volume_cavaco_m3 || dados.volume || '').replace(',', '.'),
-              )
+            : null
           const fatorPeso = conversaoCavaco ? conversaoCavaco.getFloat('fator_t_m3') : null
           const volumeCavacoValido = Number.isFinite(capacidadeCavaco) && capacidadeCavaco > 0
           if (volumeCavacoValido) {
             rec.set('volume_cavaco_m3', capacidadeCavaco)
             rec.set('volume_tora_consumido_m3', Number((capacidadeCavaco / 0.93).toFixed(2)))
-          } else if (
-            dados.volume_tora_consumido_m3 != null &&
-            dados.volume_tora_consumido_m3 !== ''
-          ) {
-            const volumeToraInformado = Number.parseFloat(
-              String(dados.volume_tora_consumido_m3).replace(',', '.'),
-            )
-            if (Number.isFinite(volumeToraInformado)) {
-              rec.set('volume_tora_consumido_m3', volumeToraInformado)
-            }
           }
 
           if (
@@ -3080,10 +3113,6 @@ routerAdd('POST', '/backend/v1/importador/executar', (e) => {
             }
             rec.set('status_calculo', 'calculado')
           } else {
-            const pesoInformado = Number.parseFloat(
-              String(dados.peso_cavaco_t || '').replace(',', '.'),
-            )
-            if (Number.isFinite(pesoInformado)) rec.set('peso_cavaco_t', pesoInformado)
             rec.set('status_calculo', 'pendente')
           }
           rec.set(
