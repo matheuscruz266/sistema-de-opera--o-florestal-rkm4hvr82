@@ -195,10 +195,12 @@ export default function HistoricoDescargaPage() {
     const cam = r.expand?.caminhao_baldeio_id?.placa_baldeio || ''
     const pil = r.expand?.pilha_destino_id?.codigo || ''
     const conf = r.conferente_nome || ''
+    const ord = r.ordem || ''
     return (
       cam.toLowerCase().includes(search.toLowerCase()) ||
       pil.toLowerCase().includes(search.toLowerCase()) ||
-      conf.toLowerCase().includes(search.toLowerCase())
+      conf.toLowerCase().includes(search.toLowerCase()) ||
+      ord.toLowerCase().includes(search.toLowerCase())
     )
   })
 
@@ -253,6 +255,7 @@ export default function HistoricoDescargaPage() {
               <thead className="bg-[#F5F7F5] border-b border-[#DDE4DE] text-[#5A6D5A] uppercase tracking-wider font-semibold">
                 <tr>
                   <th className="py-3 px-4">Data/Hora</th>
+                  <th className="py-3 px-4">Ordem</th>
                   <th className="py-3 px-4">Veículo Baldeio</th>
                   <th className="py-3 px-4">Pilha Destino</th>
                   <th className="py-3 px-4 text-right">Volume SR</th>
@@ -268,6 +271,9 @@ export default function HistoricoDescargaPage() {
                   <tr key={item.id} className="hover:bg-neutral-50/80 transition-colors">
                     <td className="py-3 px-4 font-mono text-[#5A6D5A]">
                       {item.data_hora_descarga.replace('T', ' ')}
+                    </td>
+                    <td className="py-3 px-4 font-mono text-xs font-semibold text-[#1A2E1A]">
+                      {item.ordem || '-'}
                     </td>
                     <td className="py-3 px-4 font-mono font-bold text-[#1A2E1A]">
                       {item.expand?.caminhao_baldeio_id?.placa_baldeio || 'Veículo'}

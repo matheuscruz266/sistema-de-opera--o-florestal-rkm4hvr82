@@ -290,6 +290,7 @@ export interface HistoricoBaldeio {
   inicio?: string
   fim?: string
   app_sheet_id?: string
+  ordem?: string
   data_hora_saida: string
   data_hora_chegada?: string
   volume_sr: number
@@ -331,6 +332,7 @@ export interface HistoricoDescarga {
   fim?: string
   app_sheet_id?: string
   sr_toras_tipo?: string
+  ordem?: string
   data_hora_descarga: string
   volume_sr: number
   volume_m3_calculado: number

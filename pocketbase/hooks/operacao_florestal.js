@@ -2613,6 +2613,7 @@ routerAdd('POST', '/backend/v1/importador/executar', (e) => {
           volume_m3_estimado: ['volume_m3_estimado', 'volume_m3', 'm3_estimado', 'vol_m3'],
           motorista: ['motorista', 'operador', 'condutor'],
           numero_viagem: ['numero_viagem', 'viagem', 'ticket', 'numero'],
+          ordem: ['ordem', 'ordem_carregamento', 'n_ordem', 'numero_ordem'],
           status_baldeio: ['status_baldeio', 'status', 'situacao'],
         },
         historico_descarga: {
@@ -2663,6 +2664,7 @@ routerAdd('POST', '/backend/v1/importador/executar', (e) => {
           status_aceite: ['status_aceite', 'status', 'aceite'],
           motivo_rejeicao: ['motivo_rejeicao', 'motivo', 'justificativa'],
           conferente_nome: ['conferente_nome', 'conferente', 'classificador', 'operador'],
+          ordem: ['ordem', 'ordem_carregamento', 'n_ordem', 'numero_ordem'],
         },
         historico_picador: {
           nota_fiscal: [
@@ -3196,6 +3198,7 @@ routerAdd('POST', '/backend/v1/importador/executar', (e) => {
           if (dados.localizacao) rec.set('localizacao', dados.localizacao.toString().trim())
           if (dados.inicio) rec.set('inicio', dados.inicio.toString())
           if (dados.fim) rec.set('fim', dados.fim.toString())
+          if (dados.ordem) rec.set('ordem', dados.ordem.toString().trim())
 
           if (defaultConvTorasId) rec.set('conversao_sr_id', defaultConvTorasId)
           rec.set(
@@ -3263,6 +3266,7 @@ routerAdd('POST', '/backend/v1/importador/executar', (e) => {
           if (dados.localizacao) rec.set('localizacao', dados.localizacao.toString().trim())
           if (dados.inicio) rec.set('inicio', dados.inicio.toString())
           if (dados.fim) rec.set('fim', dados.fim.toString())
+          if (dados.ordem) rec.set('ordem', dados.ordem.toString().trim())
 
           // Caso especial Regra 5b: SR_Toras pode trazer o TIPO de SR (texto Bitrem, etc.)
           if (dados.sr_toras_tipo) {

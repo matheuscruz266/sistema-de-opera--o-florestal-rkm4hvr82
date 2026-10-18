@@ -189,11 +189,13 @@ export default function HistoricoBaldeioPage() {
     const tal = r.expand?.talhao_origem_id?.talhao || ''
     const pil = r.expand?.pilha_destino_id?.codigo || ''
     const num = r.numero_viagem || ''
+    const ord = r.ordem || ''
     return (
       cam.toLowerCase().includes(search.toLowerCase()) ||
       tal.toLowerCase().includes(search.toLowerCase()) ||
       pil.toLowerCase().includes(search.toLowerCase()) ||
-      num.toLowerCase().includes(search.toLowerCase())
+      num.toLowerCase().includes(search.toLowerCase()) ||
+      ord.toLowerCase().includes(search.toLowerCase())
     )
   })
 
@@ -248,6 +250,7 @@ export default function HistoricoBaldeioPage() {
               <thead className="bg-[#F5F7F5] border-b border-[#DDE4DE] text-[#5A6D5A] uppercase tracking-wider font-semibold">
                 <tr>
                   <th className="py-3 px-4">Viagem</th>
+                  <th className="py-3 px-4">Ordem</th>
                   <th className="py-3 px-4">Veículo Baldeio</th>
                   <th className="py-3 px-4">Origem (Talhão)</th>
                   <th className="py-3 px-4">Destino (Pilha)</th>
@@ -263,6 +266,9 @@ export default function HistoricoBaldeioPage() {
                   <tr key={item.id} className="hover:bg-neutral-50/80 transition-colors">
                     <td className="py-3 px-4 font-mono font-bold text-[#1565C0]">
                       {item.numero_viagem || '-'}
+                    </td>
+                    <td className="py-3 px-4 font-mono text-xs font-semibold text-[#1A2E1A]">
+                      {item.ordem || '-'}
                     </td>
                     <td className="py-3 px-4 font-mono font-semibold text-[#1A2E1A]">
                       {item.expand?.caminhao_baldeio_id?.placa_baldeio || 'Veículo'}

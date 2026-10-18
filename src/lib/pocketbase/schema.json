@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-18T17:39:12.381Z",
+  "generatedAt": "2026-10-18T17:52:32.790Z",
   "collections": [
     {
       "name": "users",
@@ -1480,6 +1480,12 @@
           "required": false,
           "system": false,
           "collectionRef": "motivos"
+        },
+        {
+          "name": "ordem",
+          "type": "text",
+          "required": false,
+          "system": false
         }
       ],
       "indexes": ["CREATE INDEX idx_baldeio_data ON historico_baldeio (data_hora_saida DESC)"]
@@ -1679,6 +1685,12 @@
         },
         {
           "name": "sr_toras_tipo",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "ordem",
           "type": "text",
           "required": false,
           "system": false
