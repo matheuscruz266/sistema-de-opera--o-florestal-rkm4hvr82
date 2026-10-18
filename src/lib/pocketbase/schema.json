@@ -52,6 +52,12 @@
           "system": false
         },
         {
+          "name": "must_change_password",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
           "name": "app_sheet_id",
           "type": "text",
           "required": false,
@@ -1247,7 +1253,7 @@
         {
           "name": "volume_cavaco_m3",
           "type": "number",
-          "required": true,
+          "required": false,
           "system": false
         },
         {
@@ -1259,7 +1265,7 @@
         {
           "name": "volume_tora_consumido_m3",
           "type": "number",
-          "required": true,
+          "required": false,
           "system": false
         },
         {
@@ -1299,6 +1305,14 @@
           "type": "text",
           "required": false,
           "system": false
+        },
+        {
+          "name": "status_calculo",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "values": ["pendente", "calculado"],
+          "maxSelect": 1
         }
       ],
       "indexes": ["CREATE UNIQUE INDEX idx_picador_nota ON historico_picador (nota_fiscal)"]

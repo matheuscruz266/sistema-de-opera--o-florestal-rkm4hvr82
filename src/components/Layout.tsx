@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom'
+import { Outlet, NavLink, useNavigate, useLocation, Navigate } from 'react-router-dom'
 import { useAuth } from '@/context/AuthContext'
 import {
   Trees,
@@ -55,6 +55,10 @@ export default function Layout() {
   }
 
   const closeMobile = () => setMobileMenuOpen(false)
+
+  if (user?.must_change_password && location.pathname !== '/alterar-senha') {
+    return <Navigate to="/alterar-senha" replace />
+  }
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-[#F5F7F5] text-[#1A2E1A]">

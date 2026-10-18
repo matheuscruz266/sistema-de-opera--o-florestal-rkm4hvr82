@@ -773,6 +773,12 @@ export const BASES_IMPORTADOR_CATALOGO: BaseImportadorDefinicao[] = [
         ],
       },
       {
+        campo: 'id_carreta',
+        label: 'ID da Carreta (tabela SR_Cavaco)',
+        obrigatorio: false,
+        sugestoesCabecalho: ['id_carreta', 'carreta_id', 'sr_cavaco'],
+      },
+      {
         campo: 'data_hora_expedicao',
         label: 'Data/Hora Expedição',
         obrigatorio: true,
@@ -782,7 +788,7 @@ export const BASES_IMPORTADOR_CATALOGO: BaseImportadorDefinicao[] = [
         campo: 'volume_cavaco_m3',
         label: 'Volume Cavaco (m³)',
         tipo: 'number',
-        obrigatorio: true,
+        obrigatorio: false,
         sugestoesCabecalho: ['volume_cavaco_m3', 'volume_cavaco', 'volume', 'volume_m3'],
       },
       {
@@ -796,7 +802,7 @@ export const BASES_IMPORTADOR_CATALOGO: BaseImportadorDefinicao[] = [
         campo: 'volume_tora_consumido_m3',
         label: 'Volume Tora Consumido (m³)',
         tipo: 'number',
-        obrigatorio: true,
+        obrigatorio: false,
         sugestoesCabecalho: ['volume_tora_consumido_m3', 'volume_tora', 'tora_consumida'],
       },
       {
