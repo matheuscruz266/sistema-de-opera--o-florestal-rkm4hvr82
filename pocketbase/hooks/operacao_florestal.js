@@ -1732,28 +1732,6 @@ routerAdd('POST', '/backend/v1/importador/previa', (e) => {
       })
     }
 
-    const idxStatusPicador =
-      destinoTabela === 'historico_picador'
-        ? (() => {
-            const idxCabecalhoStatus = cabecalhos.findIndex((h) => {
-              const normalizado = h.toLowerCase().replace(/[^a-z0-9]/g, '')
-              return normalizado === 'status' || normalizado === 'statuspicador'
-            })
-            return idxCabecalhoStatus >= 0
-              ? idxCabecalhoStatus
-              : cabecalhos.findIndex((h) => mapeamento[h] === 'status_picador')
-          })()
-        : -1
-    if (destinoTabela === 'historico_picador' && idxStatusPicador < 0) {
-      const erroStatus = 'Coluna status_picador não encontrada ou não mapeada.'
-      basePrevia.erro = erroStatus
-      basePrevia.rejeitar = 1
-      basePrevia.rejeitados_lista.push({ linha: 1, motivo: erroStatus })
-      previaResultado.resumo_geral.total_rejeitar++
-      previaResultado.bases.push(basePrevia)
-      continue
-    }
-
     const cacheTabela = mapasExistentes[destinoTabela] || { porAppSheetId: {}, porId: {}, total: 0 }
 
     for (let r = 1; r < rows.length; r++) {
@@ -1761,13 +1739,6 @@ routerAdd('POST', '/backend/v1/importador/previa', (e) => {
       const linhaNum = r + 1
       if (!row || row.length === 0 || row.every((c) => !c || c.toString().trim() === '')) {
         continue
-      }
-
-      if (destinoTabela === 'historico_picador') {
-        const statusPicador = (row[idxStatusPicador] || '').toString().trim().toLowerCase()
-        if (statusPicador !== 'carregamento') continue
-        basePrevia.total_linhas++
-        previaResultado.resumo_geral.total_linhas++
       }
 
       // Extrai ID único da linha
@@ -1811,7 +1782,22 @@ routerAdd('POST', '/backend/v1/importador/previa', (e) => {
       } else if (destinoTabela === 'caminhoes' || destinoTabela === 'caminhao_baldeio') {
         // Se vazio, auto-gera identificador e aceita
       } else if (destinoTabela === 'pilhas') {
-        // Se vazio, auto-gera identificador e aceita
+        // Regra 5c: Upsert de pilha: NÃO criar registro com nome vazio — linha com nome vazio vai para a prévia como "ignorado"
+        const pilhaNomeIdx = cabecalhos.findIndex(
+          (h) =>
+            mapeamento[h] === 'nome' ||
+            h.toLowerCase().trim() === 'pilha' ||
+            h.toLowerCase().includes('nome'),
+        )
+        const valorPilhaNome =
+          pilhaNomeIdx >= 0 && row[pilhaNomeIdx] !== undefined
+            ? row[pilhaNomeIdx].toString().trim()
+            : ''
+        if (!valorPilhaNome) {
+          basePrevia.ignorar++
+          previaResultado.resumo_geral.total_ignorar++
+          continue
+        }
       } else if (destinoTabela === 'historico_picador') {
         // Na importação da aba picador, não recusa por falta de nota fiscal/ticket
         // Campo vazio é aceito na importação e preenchido com identificador automático se vazio
@@ -2024,7 +2010,41 @@ routerAdd('POST', '/backend/v1/importador/executar', (e) => {
       .replace(/[^a-z0-9_]/g, '')
   }
 
-  // Helper inline para resolver foreign key com AUTO-CRIAÇÃO da entidade pai se não existir
+  // Helper de conversão para tempo HH:MM:SS (evita data de época Excel ~1899)
+  const formatarTempoDuracao = (valor) => {
+    if (!valor) return ''
+    const s = valor.toString().trim()
+    if (!s) return ''
+    // Já está em formato HH:MM:SS ou H:MM:SS
+    const regexHora = /^\d{1,2}:\d{2}(:\d{2})?$/
+    if (regexHora.test(s)) {
+      const parts = s.split(':')
+      const h = parts[0].padStart(2, '0')
+      const m = parts[1].padStart(2, '0')
+      const sec = parts[2] ? parts[2].padStart(2, '0') : '00'
+      return `${h}:${m}:${sec}`
+    }
+    // Serializado como data do Excel (ex: Sat Dec 30 1899 00:01:00 GMT... ou 1899-12-30T00:01:00...)
+    if (s.includes('1899') || s.includes('1900') || s.includes('GMT') || s.includes('T')) {
+      const match = s.match(/(\d{2}):(\d{2}):(\d{2})/)
+      if (match) {
+        return `${match[1]}:${match[2]}:${match[3]}`
+      }
+      try {
+        const d = new Date(s)
+        if (!isNaN(d.getTime())) {
+          const hh = String(d.getUTCHours()).padStart(2, '0')
+          const mm = String(d.getUTCMinutes()).padStart(2, '0')
+          const ss = String(d.getUTCSeconds()).padStart(2, '0')
+          return `${hh}:${mm}:${ss}`
+        }
+      } catch (_) {}
+    }
+    return s
+  }
+
+  // Helper inline para resolver foreign key:
+  // Ordem estrita exigida: 1. ID do AppSheet -> 2. Nome / Código Natural -> 3. Auto-criação com valor padrão
   const resolverFK = (tabela, valorBruto, contextoPai) => {
     if (!valorBruto) {
       // Se não informado valor bruto, tenta obter qualquer registro ativo existente ou cria entidade padrão
@@ -2061,49 +2081,47 @@ routerAdd('POST', '/backend/v1/importador/executar', (e) => {
       }
     } catch (_) {}
 
-    // Tenta buscar no banco pelas chaves naturais específicas da tabela
+    // 1. TENTA BUSCAR POR ID DO APPSHEET
+    try {
+      const porAS = e.app.findRecordsByFilter(tabela, `app_sheet_id = '${str}'`, '', 1, 0)
+      if (porAS.length > 0) {
+        const achado = porAS[0]
+        mapa[str] = achado.id
+        return achado.id
+      }
+    } catch (_) {}
+
+    // 2. TENTA BUSCAR PELO NOME OU CÓDIGO NATURAL
     try {
       let achado = null
       if (tabela === 'fazendas') {
         const q = e.app.findRecordsByFilter(
           'fazendas',
-          `codigo = '${str}' || nome = '${str}' || app_sheet_id = '${str}'`,
+          `codigo = '${str}' || nome = '${str}'`,
           '',
           1,
           0,
         )
         if (q.length > 0) achado = q[0]
       } else if (tabela === 'talhoes') {
-        const q = e.app.findRecordsByFilter(
-          'talhoes',
-          `talhao = '${str}' || app_sheet_id = '${str}'`,
-          '',
-          1,
-          0,
-        )
+        const q = e.app.findRecordsByFilter('talhoes', `talhao = '${str}'`, '', 1, 0)
         if (q.length > 0) achado = q[0]
       } else if (tabela === 'maquinas') {
         const q = e.app.findRecordsByFilter(
           'maquinas',
-          `id_maquina = '${str}' || app_sheet_id = '${str}'`,
+          `id_maquina = '${str}' || bt = '${str}' || p_ordens ~ '${str}' || equipamento = '${str}'`,
           '',
           1,
           0,
         )
         if (q.length > 0) achado = q[0]
       } else if (tabela === 'caminhoes') {
-        const q = e.app.findRecordsByFilter(
-          'caminhoes',
-          `placa = '${str.toUpperCase()}' || app_sheet_id = '${str}'`,
-          '',
-          1,
-          0,
-        )
+        const q = e.app.findRecordsByFilter('caminhoes', `placa = '${str.toUpperCase()}'`, '', 1, 0)
         if (q.length > 0) achado = q[0]
       } else if (tabela === 'caminhao_baldeio') {
         const q = e.app.findRecordsByFilter(
           'caminhao_baldeio',
-          `placa_baldeio = '${str.toUpperCase()}' || app_sheet_id = '${str}'`,
+          `placa_baldeio = '${str.toUpperCase()}'`,
           '',
           1,
           0,
@@ -2112,7 +2130,7 @@ routerAdd('POST', '/backend/v1/importador/executar', (e) => {
       } else if (tabela === 'pilhas') {
         const q = e.app.findRecordsByFilter(
           'pilhas',
-          `codigo = '${str}' || nome = '${str}' || app_sheet_id = '${str}'`,
+          `codigo = '${str}' || nome = '${str}'`,
           '',
           1,
           0,
@@ -2121,7 +2139,7 @@ routerAdd('POST', '/backend/v1/importador/executar', (e) => {
       } else if (tabela === 'motivos') {
         const q = e.app.findRecordsByFilter(
           'motivos',
-          `id_motivo = '${str}' || app_sheet_id = '${str}'`,
+          `id_motivo = '${str}' || motivo = '${str}'`,
           '',
           1,
           0,
@@ -2130,7 +2148,7 @@ routerAdd('POST', '/backend/v1/importador/executar', (e) => {
       } else if (tabela === 'users') {
         const q = e.app.findRecordsByFilter(
           'users',
-          `email = '${lower}' || app_sheet_id = '${str}'`,
+          `email = '${lower}' || name = '${str}'`,
           '',
           1,
           0,
@@ -2318,32 +2336,8 @@ routerAdd('POST', '/backend/v1/importador/executar', (e) => {
     }
 
     const cabecalhos = rows[0].map((h) => (h || '').toString().trim())
-    const idxStatusPicador =
-      destinoTabela === 'historico_picador'
-        ? (() => {
-            const idxCabecalhoStatus = cabecalhos.findIndex((h) => {
-              const normalizado = normalizarChave(h).replace(/_/g, '')
-              return normalizado === 'status' || normalizado === 'statuspicador'
-            })
-            return idxCabecalhoStatus >= 0
-              ? idxCabecalhoStatus
-              : cabecalhos.findIndex((h) => mapeamento[h] === 'status_picador')
-          })()
-        : -1
-    if (destinoTabela === 'historico_picador' && idxStatusPicador < 0) {
-      const erroStatus = 'Coluna status_picador não encontrada ou não mapeada.'
-      baseRes.status = 'erro'
-      baseRes.rejeitados = 1
-      baseRes.erro = erroStatus
-      resultadoGeral.total_rejeitados++
-      resultadoGeral.erros.push(`Aba ${bCfg.aba}: ${erroStatus}`)
-      resultadoGeral.bases.push(baseRes)
-      continue
-    }
-    if (destinoTabela !== 'historico_picador') {
-      baseRes.linhas_lidas = rows.length - 1
-      resultadoGeral.total_linhas_processadas += rows.length - 1
-    }
+    baseRes.linhas_lidas = rows.length - 1
+    resultadoGeral.total_linhas_processadas += rows.length - 1
 
     // Localiza índice da coluna ID do AppSheet
     let idxColId = -1
@@ -2381,10 +2375,31 @@ routerAdd('POST', '/backend/v1/importador/executar', (e) => {
         continue
       }
 
-      if (destinoTabela === 'historico_picador') {
-        if (normalizarChave(row[idxStatusPicador]) !== 'carregamento') continue
-        baseRes.linhas_lidas++
-        resultadoGeral.total_linhas_processadas++
+      // Regra 5c: Upsert de pilha: NÃO criar registro com nome vazio — linha com nome vazio vai para a prévia como "ignorado" com motivo legível
+      if (destinoTabela === 'pilhas') {
+        const pilhaNomeIdx = cabecalhos.findIndex(
+          (h) =>
+            mapeamento[h] === 'nome' ||
+            h.toLowerCase().trim() === 'pilha' ||
+            h.toLowerCase().includes('nome'),
+        )
+        const valorPilhaNome =
+          pilhaNomeIdx >= 0 && row[pilhaNomeIdx] !== undefined
+            ? row[pilhaNomeIdx].toString().trim()
+            : ''
+        if (!valorPilhaNome) {
+          baseRes.ignorados++
+          resultadoGeral.total_ignorados++
+          if (baseRes.detalhes.length < 30) {
+            baseRes.detalhes.push({
+              linha: linhaNum,
+              id_chave: row[idxColId] || `L${linhaNum}`,
+              status: 'ignorado',
+              motivo: 'Pilha com identificação/nome vazio ignorada conforme regra 5c',
+            })
+          }
+          continue
+        }
       }
 
       const rawIdVal =
@@ -2637,6 +2652,9 @@ routerAdd('POST', '/backend/v1/importador/executar', (e) => {
 
       const sinonimosEntidade = dicionarioSinonimos[destinoTabela] || {}
 
+      // Rede de segurança Regra 5d: coletor de extras
+      const extrasLinha = {}
+
       for (let c = 0; c < cabecalhos.length; c++) {
         const colHeader = cabecalhos[c]
         if (!colHeader) continue
@@ -2669,6 +2687,11 @@ routerAdd('POST', '/backend/v1/importador/executar', (e) => {
               }
             }
             if (matchEncontrado) break
+          }
+
+          // Regra 5d: Toda coluna NÃO mapeada grava em extras (JSON) com o nome original da coluna como chave
+          if (val !== undefined && val !== null && val !== '') {
+            extrasLinha[colHeader] = val
           }
         }
       }
@@ -2785,6 +2808,7 @@ routerAdd('POST', '/backend/v1/importador/executar', (e) => {
           if (dados.uf) rec.set('uf', dados.uf.toString().slice(0, 2).toUpperCase())
           else if (!isUpdate) rec.set('uf', 'PR')
           if (dados.cidade) rec.set('cidade', dados.cidade.toString().trim())
+          if (dados.situacao) rec.set('situacao', dados.situacao.toString().trim())
           if (dados.area_total != null)
             rec.set('area_total', parseFloat(String(dados.area_total).replace(',', '.')) || 0)
           if (dados.area_plantada != null)
@@ -2802,19 +2826,23 @@ routerAdd('POST', '/backend/v1/importador/executar', (e) => {
             rec.set('area_ha', parseFloat(String(dados.area_ha).replace(',', '.')) || 0)
           if (dados.especie) rec.set('especie', dados.especie.toString().trim())
           if (dados.data_plantio) rec.set('data_plantio', dados.data_plantio.toString())
+          if (dados.localizacao) rec.set('localizacao', dados.localizacao.toString().trim())
           const st = (dados.status || '').toLowerCase()
           rec.set(
             'status',
             ['ativo', 'cultivo', 'colheita', 'concluido'].includes(st) ? st : 'ativo',
           )
         } else if (destinoTabela === 'trabalho') {
-          if (dados.descricao) rec.set('descricao', dados.descricao.toString())
-          if (dados.data) rec.set('data', dados.data.toString())
-          const st = (dados.status || '').toLowerCase()
-          rec.set(
-            'status',
-            ['pendente', 'em_andamento', 'concluido', 'cancelado'].includes(st) ? st : 'concluido',
-          )
+          if (dados.email_trabalho)
+            rec.set('email_trabalho', dados.email_trabalho.toString().trim())
+          if (dados.data) rec.set('data', dados.data.toString().trim())
+          const fzId = resolverFK('fazendas', dados.fazenda_id || dados.fazenda)
+          if (fzId) rec.set('fazenda_id', fzId)
+          if (dados.p_ordens) rec.set('p_ordens', dados.p_ordens.toString().trim())
+          const thId = resolverFK('talhoes', dados.talhao_id || dados.talhao)
+          if (thId) rec.set('talhao_id', thId)
+          if (dados.localizacao) rec.set('localizacao', dados.localizacao.toString().trim())
+          if (dados.status_atual) rec.set('status_atual', dados.status_atual.toString().trim())
         } else if (destinoTabela === 'maquinas') {
           const idMq =
             (dados.id_maquina || dados.maquina || dados.prefixo || '').toString().trim() ||
@@ -2828,6 +2856,13 @@ routerAdd('POST', '/backend/v1/importador/executar', (e) => {
             ['feller', 'skidder', 'picador', 'colhedora', 'outros'].includes(tp) ? tp : 'outros',
           )
           if (dados.bt) rec.set('bt', dados.bt.toString().trim())
+          if (dados.email_operador)
+            rec.set('email_operador', dados.email_operador.toString().trim())
+          if (dados.usuario_operador)
+            rec.set('usuario_operador', dados.usuario_operador.toString().trim())
+          if (dados.p_ordens) rec.set('p_ordens', dados.p_ordens.toString().trim())
+          if (dados.situacao) rec.set('situacao', dados.situacao.toString().trim())
+          if (dados.localizacao) rec.set('localizacao', dados.localizacao.toString().trim())
           if (dados.usuario_responsavel)
             rec.set('usuario_responsavel', dados.usuario_responsavel.toString().trim())
           const fzId = resolverFK('fazendas', dados.fazenda_id || dados.fazenda, {
@@ -2843,6 +2878,7 @@ routerAdd('POST', '/backend/v1/importador/executar', (e) => {
           rec.set('placa', plc)
           if (dados.modelo) rec.set('modelo', dados.modelo.toString().trim())
           else if (!isUpdate) rec.set('modelo', 'Caminhão Rodoviário')
+          if (dados.situacao) rec.set('situacao', dados.situacao.toString().trim())
           if (dados.capacidade_m3 != null)
             rec.set('capacidade_m3', parseFloat(String(dados.capacidade_m3).replace(',', '.')) || 0)
           if (dados.renavam) rec.set('renavam', dados.renavam.toString().trim())
@@ -2857,6 +2893,7 @@ routerAdd('POST', '/backend/v1/importador/executar', (e) => {
           rec.set('placa_baldeio', plc)
           if (dados.modelo) rec.set('modelo', dados.modelo.toString().trim())
           else if (!isUpdate) rec.set('modelo', 'Trator/Carreta Baldeio')
+          if (dados.situacao) rec.set('situacao', dados.situacao.toString().trim())
           if (dados.capacidade_m3 != null)
             rec.set('capacidade_m3', parseFloat(String(dados.capacidade_m3).replace(',', '.')) || 0)
           if (dados.tipo_carreta) rec.set('tipo_carreta', dados.tipo_carreta.toString().trim())
@@ -2869,6 +2906,7 @@ routerAdd('POST', '/backend/v1/importador/executar', (e) => {
           rec.set('codigo', cod)
           if (dados.nome) rec.set('nome', dados.nome.toString().trim())
           else if (!isUpdate) rec.set('nome', `Pilha ${cod}`)
+          if (dados.localizacao) rec.set('localizacao', dados.localizacao.toString().trim())
           const fzId = resolverFK('fazendas', dados.fazenda_id || dados.fazenda, {
             nome: dados.fazenda || dados.fazenda_id,
           })
@@ -2899,6 +2937,9 @@ routerAdd('POST', '/backend/v1/importador/executar', (e) => {
           if (dados.motivo) rec.set('motivo', dados.motivo.toString().trim())
           else if (!isUpdate) rec.set('motivo', `Motivo ${idMot}`)
           if (dados.equipamento) rec.set('equipamento', dados.equipamento.toString().trim())
+          if (dados.equipamento_categoria)
+            rec.set('equipamento_categoria', dados.equipamento_categoria.toString().trim())
+          if (dados.status_motivo) rec.set('status_motivo', dados.status_motivo.toString().trim())
           const cat = (dados.categoria || '').toLowerCase()
           rec.set(
             'categoria',
@@ -2915,26 +2956,54 @@ routerAdd('POST', '/backend/v1/importador/executar', (e) => {
           rec.set('status', dados.status === 'inativo' ? 'inativo' : 'ativo')
         } else if (destinoTabela === 'users') {
           if (dados.name) rec.set('name', dados.name.toString().trim())
+          if (dados.colaborador) rec.set('colaborador', dados.colaborador.toString().trim())
+          if (dados.acesso) rec.set('acesso', dados.acesso.toString().trim())
           if (dados.email && !isUpdate) {
             rec.setEmail(dados.email.toString().trim().toLowerCase())
             rec.setPassword('Skip@Pass123')
             rec.setVerified(true)
           }
-          const papel = (dados.papel || '').toLowerCase()
+          const papel = (dados.papel || dados.acesso || '').toLowerCase()
           if (['admin', 'operador', 'conferente'].includes(papel)) rec.set('papel', papel)
           rec.set('status', dados.status !== false)
         } else if (destinoTabela === 'historico_feller') {
           const thId = resolverFK('talhoes', dados.talhao_id || dados.talhao)
           if (thId) rec.set('talhao_id', thId)
+          const fzId = resolverFK('fazendas', dados.fazenda_id || dados.fazenda)
+          if (fzId) rec.set('fazenda_id', fzId)
           const mqId = resolverFK(
             'maquinas',
-            dados.maquina_id || dados.maquina || dados.id_maquina,
+            dados.maquina_id || dados.maquina || dados.equipamento || dados.id_maquina,
             { tipo: 'feller' },
           )
           if (mqId) rec.set('maquina_id', mqId)
+          const motId = resolverFK('motivos', dados.motivo_id || dados.motivo)
+          if (motId) rec.set('motivo_id', motId)
+
+          if (dados.email_registro)
+            rec.set('email_registro', dados.email_registro.toString().trim())
+          if (dados.operador) rec.set('operador', dados.operador.toString().trim())
+          if (dados.status_evento) rec.set('status_evento', dados.status_evento.toString().trim())
+          if (dados.veiculo_abastecimento)
+            rec.set('veiculo_abastecimento', dados.veiculo_abastecimento.toString().trim())
+          if (dados.horimetro != null && dados.horimetro !== '')
+            rec.set('horimetro', parseFloat(String(dados.horimetro).replace(',', '.')) || 0)
+          if (dados.litros != null && dados.litros !== '')
+            rec.set('litros', parseFloat(String(dados.litros).replace(',', '.')) || 0)
+          if (dados.tempo) rec.set('tempo', formatarTempoDuracao(dados.tempo))
+          if (dados.status_his) rec.set('status_his', dados.status_his.toString().trim())
+          if (dados.localizacao) rec.set('localizacao', dados.localizacao.toString().trim())
+          if (dados.inicio) rec.set('inicio', dados.inicio.toString())
+          if (dados.fim) rec.set('fim', dados.fim.toString())
+
           rec.set(
             'data_operacao',
-            (dados.data_operacao || dados.data || new Date().toISOString()).toString(),
+            (
+              dados.data_operacao ||
+              dados.inicio ||
+              dados.data ||
+              new Date().toISOString()
+            ).toString(),
           )
           rec.set(
             'horas_trabalhadas',
@@ -2943,7 +3012,10 @@ routerAdd('POST', '/backend/v1/importador/executar', (e) => {
           rec.set(
             'combustivel_litros',
             parseFloat(
-              String(dados.combustivel_litros || dados.combustivel || 0).replace(',', '.'),
+              String(dados.combustivel_litros || dados.litros || dados.combustivel || 0).replace(
+                ',',
+                '.',
+              ),
             ) || 0,
           )
           if (dados.arvores_derrubadas != null)
@@ -2952,15 +3024,41 @@ routerAdd('POST', '/backend/v1/importador/executar', (e) => {
         } else if (destinoTabela === 'historico_skidder') {
           const thId = resolverFK('talhoes', dados.talhao_id || dados.talhao)
           if (thId) rec.set('talhao_id', thId)
+          const fzId = resolverFK('fazendas', dados.fazenda_id || dados.fazenda)
+          if (fzId) rec.set('fazenda_id', fzId)
           const mqId = resolverFK(
             'maquinas',
-            dados.maquina_id || dados.maquina || dados.id_maquina,
+            dados.maquina_id || dados.maquina || dados.equipamento || dados.id_maquina,
             { tipo: 'skidder' },
           )
           if (mqId) rec.set('maquina_id', mqId)
+          const motId = resolverFK('motivos', dados.motivo_id || dados.motivo)
+          if (motId) rec.set('motivo_id', motId)
+
+          if (dados.email_registro)
+            rec.set('email_registro', dados.email_registro.toString().trim())
+          if (dados.operador) rec.set('operador', dados.operador.toString().trim())
+          if (dados.status_evento) rec.set('status_evento', dados.status_evento.toString().trim())
+          if (dados.veiculo_abastecimento)
+            rec.set('veiculo_abastecimento', dados.veiculo_abastecimento.toString().trim())
+          if (dados.horimetro != null && dados.horimetro !== '')
+            rec.set('horimetro', parseFloat(String(dados.horimetro).replace(',', '.')) || 0)
+          if (dados.litros != null && dados.litros !== '')
+            rec.set('litros', parseFloat(String(dados.litros).replace(',', '.')) || 0)
+          if (dados.tempo) rec.set('tempo', formatarTempoDuracao(dados.tempo))
+          if (dados.status_his) rec.set('status_his', dados.status_his.toString().trim())
+          if (dados.localizacao) rec.set('localizacao', dados.localizacao.toString().trim())
+          if (dados.inicio) rec.set('inicio', dados.inicio.toString())
+          if (dados.fim) rec.set('fim', dados.fim.toString())
+
           rec.set(
             'data_operacao',
-            (dados.data_operacao || dados.data || new Date().toISOString()).toString(),
+            (
+              dados.data_operacao ||
+              dados.inicio ||
+              dados.data ||
+              new Date().toISOString()
+            ).toString(),
           )
           rec.set(
             'horas_trabalhadas',
@@ -2969,7 +3067,10 @@ routerAdd('POST', '/backend/v1/importador/executar', (e) => {
           rec.set(
             'combustivel_litros',
             parseFloat(
-              String(dados.combustivel_litros || dados.combustivel || 0).replace(',', '.'),
+              String(dados.combustivel_litros || dados.litros || dados.combustivel || 0).replace(
+                ',',
+                '.',
+              ),
             ) || 0,
           )
           if (dados.ciclos_arraste != null)
@@ -2991,18 +3092,40 @@ routerAdd('POST', '/backend/v1/importador/executar', (e) => {
             dados.pilha_destino_id || dados.pilha || dados.destino,
           )
           if (plDest) rec.set('pilha_destino_id', plDest)
+          const fzId = resolverFK('fazendas', dados.fazenda_id || dados.fazenda)
+          if (fzId) rec.set('fazenda_id', fzId)
+          const motId = resolverFK('motivos', dados.motivo_id || dados.motivo)
+          if (motId) rec.set('motivo_id', motId)
+
+          if (dados.email_registro)
+            rec.set('email_registro', dados.email_registro.toString().trim())
+          if (dados.operador) rec.set('operador', dados.operador.toString().trim())
+          if (dados.status_evento) rec.set('status_evento', dados.status_evento.toString().trim())
+          if (dados.veiculo_abastecimento)
+            rec.set('veiculo_abastecimento', dados.veiculo_abastecimento.toString().trim())
+          if (dados.horimetro != null && dados.horimetro !== '')
+            rec.set('horimetro', parseFloat(String(dados.horimetro).replace(',', '.')) || 0)
+          if (dados.litros != null && dados.litros !== '')
+            rec.set('litros', parseFloat(String(dados.litros).replace(',', '.')) || 0)
+          if (dados.tempo) rec.set('tempo', formatarTempoDuracao(dados.tempo))
+          if (dados.status_his) rec.set('status_his', dados.status_his.toString().trim())
+          if (dados.localizacao) rec.set('localizacao', dados.localizacao.toString().trim())
+          if (dados.inicio) rec.set('inicio', dados.inicio.toString())
+          if (dados.fim) rec.set('fim', dados.fim.toString())
+
           if (defaultConvTorasId) rec.set('conversao_sr_id', defaultConvTorasId)
           rec.set(
             'data_hora_saida',
             (
               dados.data_hora_saida ||
               dados.data_hora ||
+              dados.inicio ||
               dados.data ||
               new Date().toISOString()
             ).toString(),
           )
-          if (dados.data_hora_chegada)
-            rec.set('data_hora_chegada', dados.data_hora_chegada.toString())
+          if (dados.data_hora_chegada || dados.fim)
+            rec.set('data_hora_chegada', (dados.data_hora_chegada || dados.fim).toString())
           rec.set(
             'volume_sr',
             parseFloat(String(dados.volume_sr || dados.volume || 0).replace(',', '.')) || 0,
@@ -3031,19 +3154,58 @@ routerAdd('POST', '/backend/v1/importador/executar', (e) => {
             dados.pilha_destino_id || dados.pilha || dados.destino,
           )
           if (plDest) rec.set('pilha_destino_id', plDest)
+          const fzId = resolverFK('fazendas', dados.fazenda_id || dados.fazenda)
+          if (fzId) rec.set('fazenda_id', fzId)
+          const mqId = resolverFK(
+            'maquinas',
+            dados.maquina_id || dados.equipamento || dados.maquina,
+          )
+          if (mqId) rec.set('maquina_id', mqId)
+          const motId = resolverFK('motivos', dados.motivo_id || dados.motivo)
+          if (motId) rec.set('motivo_id', motId)
+
+          if (dados.email_registro)
+            rec.set('email_registro', dados.email_registro.toString().trim())
+          if (dados.operador) rec.set('operador', dados.operador.toString().trim())
+          if (dados.status_evento) rec.set('status_evento', dados.status_evento.toString().trim())
+          if (dados.veiculo_abastecimento)
+            rec.set('veiculo_abastecimento', dados.veiculo_abastecimento.toString().trim())
+          if (dados.horimetro != null && dados.horimetro !== '')
+            rec.set('horimetro', parseFloat(String(dados.horimetro).replace(',', '.')) || 0)
+          if (dados.litros != null && dados.litros !== '')
+            rec.set('litros', parseFloat(String(dados.litros).replace(',', '.')) || 0)
+          if (dados.tempo) rec.set('tempo', formatarTempoDuracao(dados.tempo))
+          if (dados.status_his) rec.set('status_his', dados.status_his.toString().trim())
+          if (dados.localizacao) rec.set('localizacao', dados.localizacao.toString().trim())
+          if (dados.inicio) rec.set('inicio', dados.inicio.toString())
+          if (dados.fim) rec.set('fim', dados.fim.toString())
+
+          // Caso especial Regra 5b: SR_Toras pode trazer o TIPO de SR (texto Bitrem, etc.)
+          if (dados.sr_toras_tipo) {
+            rec.set('sr_toras_tipo', dados.sr_toras_tipo.toString().trim())
+          } else if (dados.sr_toras && isNaN(Number(String(dados.sr_toras).replace(',', '.')))) {
+            rec.set('sr_toras_tipo', dados.sr_toras.toString().trim())
+          }
+
           if (defaultConvTorasId) rec.set('conversao_sr_id', defaultConvTorasId)
           rec.set(
             'data_hora_descarga',
             (
               dados.data_hora_descarga ||
               dados.data_hora ||
+              dados.inicio ||
               dados.data ||
               new Date().toISOString()
             ).toString(),
           )
           rec.set(
             'volume_sr',
-            parseFloat(String(dados.volume_sr || dados.volume || 0).replace(',', '.')) || 0,
+            parseFloat(
+              String(dados.volume_sr || (dados.sr_toras_tipo ? 0 : dados.sr_toras) || 0).replace(
+                ',',
+                '.',
+              ),
+            ) || 0,
           )
           rec.set(
             'volume_m3_calculado',
@@ -3077,10 +3239,42 @@ routerAdd('POST', '/backend/v1/importador/executar', (e) => {
             nf = `PIC-S-NOTA-${refId}`
           }
           rec.set('nota_fiscal', nf)
-          const cmId = resolverFK('caminhoes', dados.caminhao_id || dados.placa || dados.caminhao)
+          const cmId = resolverFK('caminhoes', dados.caminhao_id || dados.caminhao || dados.placa)
           if (cmId) rec.set('caminhao_id', cmId)
           const plOrig = resolverFK('pilhas', dados.pilha_origem_id || dados.pilha || dados.origem)
           if (plOrig) rec.set('pilha_origem_id', plOrig)
+          const fzId = resolverFK('fazendas', dados.fazenda_id || dados.fazenda)
+          if (fzId) rec.set('fazenda_id', fzId)
+          const picMqId = resolverFK(
+            'maquinas',
+            dados.picador || dados.picador_maquina_id || dados.maquina,
+          )
+          if (picMqId) {
+            rec.set('picador_maquina_id', picMqId)
+            rec.set('picador', (dados.picador || '').toString().trim())
+          } else if (dados.picador) {
+            rec.set('picador', dados.picador.toString().trim())
+          }
+          const motId = resolverFK('motivos', dados.motivo_id || dados.motivo)
+          if (motId) rec.set('motivo_id', motId)
+
+          if (dados.email_registro)
+            rec.set('email_registro', dados.email_registro.toString().trim())
+          if (dados.operador) rec.set('operador', dados.operador.toString().trim())
+          if (dados.status_evento) rec.set('status_evento', dados.status_evento.toString().trim())
+          if (dados.veiculo_abastecimento)
+            rec.set('veiculo_abastecimento', dados.veiculo_abastecimento.toString().trim())
+          if (dados.horimetro != null && dados.horimetro !== '')
+            rec.set('horimetro', parseFloat(String(dados.horimetro).replace(',', '.')) || 0)
+          if (dados.litros != null && dados.litros !== '')
+            rec.set('litros', parseFloat(String(dados.litros).replace(',', '.')) || 0)
+          if (dados.tempo) rec.set('tempo', formatarTempoDuracao(dados.tempo))
+          if (dados.status_his) rec.set('status_his', dados.status_his.toString().trim())
+          if (dados.localizacao) rec.set('localizacao', dados.localizacao.toString().trim())
+          if (dados.inicio) rec.set('inicio', dados.inicio.toString())
+          if (dados.fim) rec.set('fim', dados.fim.toString())
+          if (dados.sr_cavaco) rec.set('sr_cavaco_texto', dados.sr_cavaco.toString().trim())
+
           const conversaoId = (dados.conversao_cavaco_id || '').toString().trim()
           let conversaoCavaco = null
           if (conversaoId) {
@@ -3123,6 +3317,7 @@ routerAdd('POST', '/backend/v1/importador/executar', (e) => {
             'data_hora_expedicao',
             (
               dados.data_hora_expedicao ||
+              dados.inicio ||
               dados.data_hora ||
               dados.data ||
               new Date().toISOString()
@@ -3131,9 +3326,14 @@ routerAdd('POST', '/backend/v1/importador/executar', (e) => {
           if (dados.cliente) rec.set('cliente', dados.cliente.toString())
           if (dados.umidade_perc != null)
             rec.set('umidade_perc', parseFloat(String(dados.umidade_perc).replace(',', '.')) || 0)
-          if (dados.operador_nome) rec.set('operador_nome', dados.operador_nome.toString())
+          if (dados.operador_nome || dados.operador)
+            rec.set('operador_nome', (dados.operador_nome || dados.operador).toString())
         }
 
+        // Regra 5d: Atribui extras (JSON) com todas as colunas sem campo próprio
+        if (Object.keys(extrasLinha).length > 0) {
+          rec.set('extras', extrasLinha)
+        }
         e.app.save(rec)
 
         // Guarda no mapa de FKs para registros subsequentes
@@ -3463,6 +3663,7 @@ routerAdd('POST', '/backend/v1/admin/purge', (e) => {
     'conciliacao_divergencias_hist',
     'conciliacao_ajustes',
     'conciliacao_alertas',
+    'trabalho',
     'inventario_pilha',
     'historico_descarga',
     'historico_picador',

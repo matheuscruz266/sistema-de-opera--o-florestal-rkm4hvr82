@@ -28,6 +28,7 @@ import {
   FileSpreadsheet,
   KeyRound,
   ShieldCheck,
+  ClipboardList,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -422,6 +423,19 @@ export default function Layout() {
               Administração
             </span>
             <NavLink
+              to="/cadastros/trabalho"
+              className={({ isActive }) =>
+                `flex items-center gap-2.5 px-3 py-2 rounded-lg font-medium transition-all ${
+                  isActive
+                    ? 'bg-[#E8F5E9] text-[#1B5E20]'
+                    : 'text-[#5A6D5A] hover:bg-neutral-100 hover:text-[#1A2E1A]'
+                }`
+              }
+            >
+              <ClipboardList className="w-4 h-4 text-[#1B5E20]" />
+              <span className="text-sm">Trabalho / Apontamentos</span>
+            </NavLink>
+            <NavLink
               to="/integracoes"
               className={({ isActive }) =>
                 `flex items-center justify-between gap-2.5 px-3 py-2 rounded-lg font-medium transition-all ${
@@ -743,6 +757,12 @@ export default function Layout() {
                 <span className="px-3 text-[10px] font-bold uppercase text-[#5A6D5A]">
                   Administração
                 </span>
+                <NavLink
+                  to="/cadastros/trabalho"
+                  className="block px-3 py-1 text-xs font-medium text-[#1A2E1A]"
+                >
+                  Trabalho / Apontamentos
+                </NavLink>
                 <NavLink
                   to="/integracoes"
                   className="block px-3 py-1 text-xs font-semibold text-[#1B5E20]"

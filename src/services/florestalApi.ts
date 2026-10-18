@@ -181,6 +181,35 @@ export const apiService = {
     return await pb.collection('motivos').delete(id)
   },
 
+  // Trabalho / Apontamentos
+  async getTrabalhos(fazendaId?: string): Promise<import('../types/florestal').Trabalho[]> {
+    const filter = fazendaId ? `fazenda_id = '${fazendaId}'` : ''
+    return await pb.collection('trabalho').getFullList<import('../types/florestal').Trabalho>({
+      filter,
+      sort: '-created',
+      expand: 'fazenda_id,talhao_id',
+    })
+  },
+  async getTrabalhoById(id: string): Promise<import('../types/florestal').Trabalho> {
+    return await pb.collection('trabalho').getOne<import('../types/florestal').Trabalho>(id, {
+      expand: 'fazenda_id,talhao_id',
+    })
+  },
+  async createTrabalho(
+    data: Partial<import('../types/florestal').Trabalho>,
+  ): Promise<import('../types/florestal').Trabalho> {
+    return await pb.collection('trabalho').create<import('../types/florestal').Trabalho>(data)
+  },
+  async updateTrabalho(
+    id: string,
+    data: Partial<import('../types/florestal').Trabalho>,
+  ): Promise<import('../types/florestal').Trabalho> {
+    return await pb.collection('trabalho').update<import('../types/florestal').Trabalho>(id, data)
+  },
+  async deleteTrabalho(id: string): Promise<boolean> {
+    return await pb.collection('trabalho').delete(id)
+  },
+
   // Conversões SR_Toras
   async getConversoesSrToras(): Promise<ConversaoSrToras[]> {
     return await pb

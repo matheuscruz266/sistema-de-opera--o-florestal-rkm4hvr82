@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-18T16:14:38.675Z",
+  "generatedAt": "2026-10-18T17:19:04.093Z",
   "collections": [
     {
       "name": "users",
@@ -60,6 +60,24 @@
         {
           "name": "must_change_password",
           "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "extras",
+          "type": "json",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "acesso",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "colaborador",
+          "type": "text",
           "required": false,
           "system": false
         }
@@ -142,6 +160,18 @@
           "type": "text",
           "required": false,
           "system": false
+        },
+        {
+          "name": "extras",
+          "type": "json",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "situacao",
+          "type": "text",
+          "required": false,
+          "system": false
         }
       ],
       "indexes": ["CREATE UNIQUE INDEX idx_fazendas_codigo ON fazendas (codigo)"]
@@ -212,6 +242,18 @@
         {
           "name": "app_sheet_id",
           "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "localizacao",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "extras",
+          "type": "json",
           "required": false,
           "system": false
         }
@@ -293,6 +335,42 @@
           "type": "text",
           "required": false,
           "system": false
+        },
+        {
+          "name": "localizacao",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "extras",
+          "type": "json",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "email_operador",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "usuario_operador",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "p_ordens",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "situacao",
+          "type": "text",
+          "required": false,
+          "system": false
         }
       ],
       "indexes": ["CREATE UNIQUE INDEX idx_maquinas_id_maquina ON maquinas (id_maquina)"]
@@ -358,6 +436,18 @@
           "type": "text",
           "required": false,
           "system": false
+        },
+        {
+          "name": "extras",
+          "type": "json",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "situacao",
+          "type": "text",
+          "required": false,
+          "system": false
         }
       ],
       "indexes": ["CREATE UNIQUE INDEX idx_caminhoes_placa ON caminhoes (placa)"]
@@ -420,6 +510,18 @@
         },
         {
           "name": "app_sheet_id",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "extras",
+          "type": "json",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "situacao",
           "type": "text",
           "required": false,
           "system": false
@@ -509,6 +611,18 @@
           "type": "text",
           "required": false,
           "system": false
+        },
+        {
+          "name": "localizacao",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "extras",
+          "type": "json",
+          "required": false,
+          "system": false
         }
       ],
       "indexes": ["CREATE UNIQUE INDEX idx_pilhas_codigo ON pilhas (codigo)"]
@@ -578,6 +692,24 @@
         },
         {
           "name": "app_sheet_id",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "extras",
+          "type": "json",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "equipamento_categoria",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "status_motivo",
           "type": "text",
           "required": false,
           "system": false
@@ -907,6 +1039,92 @@
           "type": "text",
           "required": false,
           "system": false
+        },
+        {
+          "name": "localizacao",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "extras",
+          "type": "json",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "email_registro",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "operador",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "status_evento",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "veiculo_abastecimento",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "horimetro",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "litros",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "tempo",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "status_his",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "inicio",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "fim",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "fazenda_id",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "fazendas"
+        },
+        {
+          "name": "motivo_id",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "motivos"
         }
       ],
       "indexes": ["CREATE INDEX idx_feller_data ON historico_feller (data_operacao DESC)"]
@@ -985,6 +1203,92 @@
           "type": "text",
           "required": false,
           "system": false
+        },
+        {
+          "name": "localizacao",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "extras",
+          "type": "json",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "email_registro",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "operador",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "status_evento",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "veiculo_abastecimento",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "horimetro",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "litros",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "tempo",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "status_his",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "inicio",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "fim",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "fazenda_id",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "fazendas"
+        },
+        {
+          "name": "motivo_id",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "motivos"
         }
       ],
       "indexes": ["CREATE INDEX idx_skidder_data ON historico_skidder (data_operacao DESC)"]
@@ -1090,6 +1394,92 @@
           "type": "text",
           "required": false,
           "system": false
+        },
+        {
+          "name": "localizacao",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "extras",
+          "type": "json",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "email_registro",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "operador",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "status_evento",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "veiculo_abastecimento",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "horimetro",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "litros",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "tempo",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "status_his",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "inicio",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "fim",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "fazenda_id",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "fazendas"
+        },
+        {
+          "name": "motivo_id",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "motivos"
         }
       ],
       "indexes": ["CREATE INDEX idx_baldeio_data ON historico_baldeio (data_hora_saida DESC)"]
@@ -1197,6 +1587,98 @@
         },
         {
           "name": "app_sheet_id",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "localizacao",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "extras",
+          "type": "json",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "email_registro",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "operador",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "status_evento",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "veiculo_abastecimento",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "horimetro",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "litros",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "tempo",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "status_his",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "inicio",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "fim",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "fazenda_id",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "fazendas"
+        },
+        {
+          "name": "motivo_id",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "motivos"
+        },
+        {
+          "name": "sr_toras_tipo",
           "type": "text",
           "required": false,
           "system": false
@@ -1312,6 +1794,111 @@
           "required": false,
           "system": false,
           "selectValues": ["pendente", "calculado"]
+        },
+        {
+          "name": "localizacao",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "extras",
+          "type": "json",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "email_registro",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "operador",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "status_evento",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "veiculo_abastecimento",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "horimetro",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "litros",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "tempo",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "status_his",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "inicio",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "fim",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "fazenda_id",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "fazendas"
+        },
+        {
+          "name": "motivo_id",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "motivos"
+        },
+        {
+          "name": "picador_maquina_id",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "maquinas"
+        },
+        {
+          "name": "picador",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "sr_cavaco_texto",
+          "type": "text",
+          "required": false,
+          "system": false
         }
       ],
       "indexes": ["CREATE UNIQUE INDEX idx_picador_nota ON historico_picador (nota_fiscal)"]
@@ -2108,6 +2695,90 @@
         "CREATE UNIQUE INDEX idx_importador_base_key ON importador_bases_config (base_key)",
         "CREATE INDEX idx_importador_ordem ON importador_bases_config (ordem_execucao)"
       ]
+    },
+    {
+      "name": "trabalho",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.id != ''",
+        "update": "@request.auth.id != ''",
+        "delete": "@request.auth.id != ''"
+      },
+      "fields": [
+        {
+          "name": "app_sheet_id",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "email_trabalho",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "data",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "fazenda_id",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "fazendas"
+        },
+        {
+          "name": "p_ordens",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "talhao_id",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "talhoes"
+        },
+        {
+          "name": "localizacao",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "status_atual",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "extras",
+          "type": "json",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": ["CREATE UNIQUE INDEX idx_trabalho_app_sheet_id ON trabalho (app_sheet_id)"]
     }
   ]
 }

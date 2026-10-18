@@ -1244,16 +1244,59 @@ export const GoogleSheetsD2Section: React.FC<GoogleSheetsD2SectionProps> = ({
 
               {baseConfigEdicao?.cabecalhos_detectados &&
               baseConfigEdicao.cabecalhos_detectados.length > 0 ? (
-                <div className="flex flex-wrap gap-1">
-                  {baseConfigEdicao.cabecalhos_detectados.map((col) => (
-                    <Badge
-                      key={col}
-                      variant="outline"
-                      className="text-[10px] font-mono bg-white border-[#DDE4DE]"
-                    >
-                      {col}
-                    </Badge>
-                  ))}
+                <div className="space-y-2">
+                  <div className="flex flex-wrap gap-1">
+                    {baseConfigEdicao.cabecalhos_detectados.map((col) => {
+                      const mapeamentoAtual = baseConfigEdicao?.mapeamento_campos || {}
+                      const temDestino = Boolean(mapeamentoAtual[col])
+                      return (
+                        <Badge
+                          key={col}
+                          variant="outline"
+                          className={`text-[10px] font-mono ${
+                            temDestino
+                              ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                              : 'bg-amber-50 text-amber-800 border-amber-300'
+                          }`}
+                          title={
+                            temDestino
+                              ? `Mapeado para: ${mapeamentoAtual[col]}`
+                              : 'Coluna sem campo próprio — será gravada automaticamente em extras (JSON)'
+                          }
+                        >
+                          {col} {temDestino ? '✓' : '→ extras'}
+                        </Badge>
+                      )
+                    })}
+                  </div>
+
+                  {(() => {
+                    const mapeamentoAtual = baseConfigEdicao?.mapeamento_campos || {}
+                    const semDestino = (baseConfigEdicao.cabecalhos_detectados || []).filter(
+                      (col) => !mapeamentoAtual[col],
+                    )
+                    if (semDestino.length > 0) {
+                      return (
+                        <div className="p-2 bg-amber-50 border border-amber-200 rounded text-[11px] text-amber-900 flex items-center gap-1.5">
+                          <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                          <span>
+                            <strong>{semDestino.length} coluna(s)</strong> sem destino sugerido:{' '}
+                            <code className="text-[10px] font-mono bg-amber-100 px-1 py-0.5 rounded">
+                              {semDestino.join(', ')}
+                            </code>
+                            . Pela regra de segurança, nenhuma informação é descartada: serão
+                            gravadas automaticamente em <strong>extras (JSON)</strong>.
+                          </span>
+                        </div>
+                      )
+                    }
+                    return (
+                      <div className="p-2 bg-emerald-50 border border-emerald-200 rounded text-[11px] text-emerald-900 flex items-center gap-1.5">
+                        <Check className="w-4 h-4 text-emerald-600 shrink-0" />
+                        <span>100% das colunas detectadas possuem destino mapeado!</span>
+                      </div>
+                    )
+                  })()}
                 </div>
               ) : (
                 <span className="text-[11px] text-[#5A6D5A] italic block">

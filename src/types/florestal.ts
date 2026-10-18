@@ -6,9 +6,13 @@ export interface UserRecord {
   id: string
   email: string
   name?: string
+  colaborador?: string
+  acesso?: string
+  app_sheet_id?: string
   papel?: PapelUsuario
   status?: boolean
   must_change_password?: boolean
+  extras?: Record<string, unknown>
   created?: string
   updated?: string
 }
@@ -19,9 +23,12 @@ export interface Fazenda {
   codigo: string
   uf: string
   cidade?: string
+  situacao?: string
+  app_sheet_id?: string
   area_total?: number
   area_plantada?: number
   status: 'ativa' | 'inativa'
+  extras?: Record<string, unknown>
   created?: string
   updated?: string
 }
@@ -33,7 +40,10 @@ export interface Talhao {
   area_ha?: number
   especie?: string
   data_plantio?: string
+  localizacao?: string
+  app_sheet_id?: string
   status: 'ativo' | 'cultivo' | 'colheita' | 'concluido'
+  extras?: Record<string, unknown>
   created?: string
   updated?: string
   expand?: {
@@ -47,9 +57,16 @@ export interface Maquina {
   equipamento: string
   tipo: 'feller' | 'skidder' | 'picador' | 'colhedora' | 'outros'
   bt?: string
+  p_ordens?: string
+  email_operador?: string
+  usuario_operador?: string
+  situacao?: string
+  localizacao?: string
+  app_sheet_id?: string
   usuario_responsavel?: string
   fazenda_id?: string
   status: 'ativa' | 'manutencao' | 'inativa'
+  extras?: Record<string, unknown>
   created?: string
   updated?: string
   expand?: {
@@ -61,9 +78,12 @@ export interface Caminhao {
   id: string
   placa: string
   modelo: string
+  situacao?: string
   capacidade_m3?: number
   renavam?: string
+  app_sheet_id?: string
   status: 'ativo' | 'manutencao' | 'inativo'
+  extras?: Record<string, unknown>
   created?: string
   updated?: string
 }
@@ -72,9 +92,12 @@ export interface CaminhaoBaldeio {
   id: string
   placa_baldeio: string
   modelo: string
+  situacao?: string
   capacidade_m3?: number
   tipo_carreta?: string
+  app_sheet_id?: string
   status: 'ativo' | 'manutencao' | 'inativo'
+  extras?: Record<string, unknown>
   created?: string
   updated?: string
 }
@@ -88,7 +111,10 @@ export interface Pilha {
   is_mista?: boolean
   produto: 'tora' | 'cavaco' | 'misto'
   volume_atual_m3?: number
+  localizacao?: string
+  app_sheet_id?: string
   status: 'ativa' | 'inativa' | 'em_consumo' | 'concluido'
+  extras?: Record<string, unknown>
   created?: string
   updated?: string
   expand?: {
@@ -101,11 +127,34 @@ export interface Motivo {
   id: string
   id_motivo: string
   equipamento?: string
+  equipamento_categoria?: string
+  status_motivo?: string
   motivo: string
+  app_sheet_id?: string
   categoria: 'rejeicao_tora' | 'recusa_cavaco' | 'parada_maquina' | 'divergencia_estoque' | 'outros'
   status: 'ativo' | 'inativo'
+  extras?: Record<string, unknown>
   created?: string
   updated?: string
+}
+
+export interface Trabalho {
+  id: string
+  app_sheet_id?: string
+  email_trabalho?: string
+  data?: string
+  fazenda_id?: string
+  p_ordens?: string
+  talhao_id?: string
+  localizacao?: string
+  status_atual?: string
+  extras?: Record<string, unknown>
+  created?: string
+  updated?: string
+  expand?: {
+    fazenda_id?: Fazenda
+    talhao_id?: Talhao
+  }
 }
 
 export interface ConversaoSrToras {
@@ -157,16 +206,33 @@ export interface HistoricoFeller {
   id: string
   talhao_id: string
   maquina_id: string
+  fazenda_id?: string
+  motivo_id?: string
+  email_registro?: string
+  operador?: string
+  status_evento?: string
+  veiculo_abastecimento?: string
+  horimetro?: number
+  litros?: number
+  tempo?: string
+  status_his?: string
+  localizacao?: string
+  inicio?: string
+  fim?: string
+  app_sheet_id?: string
   data_operacao: string
   horas_trabalhadas: number
   combustivel_litros: number
   arvores_derrubadas?: number
   observacoes?: string
+  extras?: Record<string, unknown>
   created?: string
   updated?: string
   expand?: {
     talhao_id?: Talhao
     maquina_id?: Maquina
+    fazenda_id?: Fazenda
+    motivo_id?: Motivo
   }
 }
 
@@ -174,16 +240,33 @@ export interface HistoricoSkidder {
   id: string
   talhao_id: string
   maquina_id: string
+  fazenda_id?: string
+  motivo_id?: string
+  email_registro?: string
+  operador?: string
+  status_evento?: string
+  veiculo_abastecimento?: string
+  horimetro?: number
+  litros?: number
+  tempo?: string
+  status_his?: string
+  localizacao?: string
+  inicio?: string
+  fim?: string
+  app_sheet_id?: string
   data_operacao: string
   horas_trabalhadas: number
   combustivel_litros: number
   ciclos_arraste?: number
   observacoes?: string
+  extras?: Record<string, unknown>
   created?: string
   updated?: string
   expand?: {
     talhao_id?: Talhao
     maquina_id?: Maquina
+    fazenda_id?: Fazenda
+    motivo_id?: Motivo
   }
 }
 
@@ -193,6 +276,20 @@ export interface HistoricoBaldeio {
   caminhao_baldeio_id: string
   talhao_origem_id: string
   pilha_destino_id: string
+  fazenda_id?: string
+  motivo_id?: string
+  email_registro?: string
+  operador?: string
+  status_evento?: string
+  veiculo_abastecimento?: string
+  horimetro?: number
+  litros?: number
+  tempo?: string
+  status_his?: string
+  localizacao?: string
+  inicio?: string
+  fim?: string
+  app_sheet_id?: string
   data_hora_saida: string
   data_hora_chegada?: string
   volume_sr: number
@@ -200,6 +297,7 @@ export interface HistoricoBaldeio {
   motorista?: string
   numero_viagem?: string
   status_baldeio: 'em_transito' | 'concluido' | 'cancelado'
+  extras?: Record<string, unknown>
   created?: string
   updated?: string
   expand?: {
@@ -207,6 +305,8 @@ export interface HistoricoBaldeio {
     caminhao_baldeio_id?: CaminhaoBaldeio
     talhao_origem_id?: Talhao
     pilha_destino_id?: Pilha
+    fazenda_id?: Fazenda
+    motivo_id?: Motivo
   }
 }
 
@@ -215,6 +315,22 @@ export interface HistoricoDescarga {
   conversao_sr_id?: string
   caminhao_baldeio_id: string
   pilha_destino_id: string
+  fazenda_id?: string
+  maquina_id?: string
+  motivo_id?: string
+  email_registro?: string
+  operador?: string
+  status_evento?: string
+  veiculo_abastecimento?: string
+  horimetro?: number
+  litros?: number
+  tempo?: string
+  status_his?: string
+  localizacao?: string
+  inicio?: string
+  fim?: string
+  app_sheet_id?: string
+  sr_toras_tipo?: string
   data_hora_descarga: string
   volume_sr: number
   volume_m3_calculado: number
@@ -224,12 +340,16 @@ export interface HistoricoDescarga {
   status_aceite: 'aceito' | 'rejeitado' | 'pendente'
   motivo_rejeicao?: string
   conferente_nome?: string
+  extras?: Record<string, unknown>
   created?: string
   updated?: string
   expand?: {
     conversao_sr_id?: ConversaoSrToras
     caminhao_baldeio_id?: CaminhaoBaldeio
     pilha_destino_id?: Pilha
+    fazenda_id?: Fazenda
+    maquina_id?: Maquina
+    motivo_id?: Motivo
   }
 }
 
@@ -238,6 +358,23 @@ export interface HistoricoPicador {
   conversao_cavaco_id?: string
   caminhao_id: string
   pilha_origem_id: string
+  fazenda_id?: string
+  picador_maquina_id?: string
+  picador?: string
+  motivo_id?: string
+  email_registro?: string
+  operador?: string
+  status_evento?: string
+  veiculo_abastecimento?: string
+  horimetro?: number
+  litros?: number
+  tempo?: string
+  status_his?: string
+  localizacao?: string
+  inicio?: string
+  fim?: string
+  sr_cavaco_texto?: string
+  app_sheet_id?: string
   nota_fiscal: string
   data_hora_expedicao: string
   volume_cavaco_m3?: number | null
@@ -247,12 +384,16 @@ export interface HistoricoPicador {
   cliente?: string
   umidade_perc?: number
   operador_nome?: string
+  extras?: Record<string, unknown>
   created?: string
   updated?: string
   expand?: {
     conversao_cavaco_id?: ConversaoSrCavaco
     caminhao_id?: Caminhao
     pilha_origem_id?: Pilha
+    fazenda_id?: Fazenda
+    picador_maquina_id?: Maquina
+    motivo_id?: Motivo
   }
 }
 

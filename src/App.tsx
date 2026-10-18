@@ -21,6 +21,7 @@ import CaminhaoBaldeioPage from './pages/cadastros/CaminhaoBaldeio'
 import PilhasPage from './pages/cadastros/Pilhas'
 import MotivosPage from './pages/cadastros/Motivos'
 import UsuariosPage from './pages/cadastros/Usuarios'
+import TrabalhoPage from './pages/cadastros/Trabalho'
 
 // Núcleo A: Históricos Operacionais
 import HistoricoFellerPage from './pages/historicos/HistoricoFeller'
@@ -86,6 +87,7 @@ export function App() {
             <Route path="/cadastros/pilhas" element={<PilhasPage />} />
             <Route path="/cadastros/motivos" element={<MotivosPage />} />
             <Route path="/cadastros/usuarios" element={<UsuariosPage />} />
+            <Route path="/cadastros/trabalho" element={<TrabalhoPage />} />
 
             {/* Administração & Integrações */}
             <Route path="/integracoes" element={<IntegracoesPage />} />
