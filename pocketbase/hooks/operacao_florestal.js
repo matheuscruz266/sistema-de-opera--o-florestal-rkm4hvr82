@@ -2618,11 +2618,7 @@ routerAdd('POST', '/backend/v1/importador/executar', (e) => {
             'tora_consumida',
             'consumo_tora_m3',
           ],
-          conversao_cavaco_id: [
-            'conversao_cavaco_id',
-            'sr_cavaco',
-            'id_conversao_sr_cavaco',
-          ],
+          conversao_cavaco_id: ['conversao_cavaco_id', 'sr_cavaco', 'id_conversao_sr_cavaco'],
           status_picador: ['status_picador'],
           pilha_origem_id: [
             'pilha_origem_id',
