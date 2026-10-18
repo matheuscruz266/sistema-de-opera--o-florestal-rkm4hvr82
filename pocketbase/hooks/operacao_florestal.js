@@ -1734,11 +1734,15 @@ routerAdd('POST', '/backend/v1/importador/previa', (e) => {
 
     const idxStatusPicador =
       destinoTabela === 'historico_picador'
-        ? cabecalhos.findIndex(
-            (h) =>
-              mapeamento[h] === 'status_picador' ||
-              h.toLowerCase().replace(/[^a-z0-9]/g, '') === 'statuspicador',
-          )
+        ? (() => {
+            const idxCabecalhoStatus = cabecalhos.findIndex((h) => {
+              const normalizado = h.toLowerCase().replace(/[^a-z0-9]/g, '')
+              return normalizado === 'status' || normalizado === 'statuspicador'
+            })
+            return idxCabecalhoStatus >= 0
+              ? idxCabecalhoStatus
+              : cabecalhos.findIndex((h) => mapeamento[h] === 'status_picador')
+          })()
         : -1
     if (destinoTabela === 'historico_picador' && idxStatusPicador < 0) {
       const erroStatus = 'Coluna status_picador não encontrada ou não mapeada.'
@@ -2316,11 +2320,15 @@ routerAdd('POST', '/backend/v1/importador/executar', (e) => {
     const cabecalhos = rows[0].map((h) => (h || '').toString().trim())
     const idxStatusPicador =
       destinoTabela === 'historico_picador'
-        ? cabecalhos.findIndex(
-            (h) =>
-              mapeamento[h] === 'status_picador' ||
-              normalizarChave(h).replace(/_/g, '') === 'statuspicador',
-          )
+        ? (() => {
+            const idxCabecalhoStatus = cabecalhos.findIndex((h) => {
+              const normalizado = normalizarChave(h).replace(/_/g, '')
+              return normalizado === 'status' || normalizado === 'statuspicador'
+            })
+            return idxCabecalhoStatus >= 0
+              ? idxCabecalhoStatus
+              : cabecalhos.findIndex((h) => mapeamento[h] === 'status_picador')
+          })()
         : -1
     if (destinoTabela === 'historico_picador' && idxStatusPicador < 0) {
       const erroStatus = 'Coluna status_picador não encontrada ou não mapeada.'

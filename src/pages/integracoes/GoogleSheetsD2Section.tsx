@@ -328,10 +328,19 @@ export const GoogleSheetsD2Section: React.FC<GoogleSheetsD2SectionProps> = ({
             // Checa correspondência com campos de destino
             for (const campoDest of baseDef.camposDestino) {
               const sugestoes = campoDest.sugestoesCabecalho || [campoDest.campo]
-              const match = sugestoes.some((s) => {
-                const sClean = s.toLowerCase().replace(/[^a-z0-9_]/g, '')
-                return colLimpa === sClean || colLimpa.includes(sClean) || sClean.includes(colLimpa)
-              })
+              const match =
+                campoDest.campo === 'status_picador'
+                  ? ['status', 'status_picador', 'status picador'].some(
+                      (s) => colLimpa === s.toLowerCase().replace(/[^a-z0-9_]/g, ''),
+                    )
+                  : sugestoes.some((s) => {
+                      const sClean = s.toLowerCase().replace(/[^a-z0-9_]/g, '')
+                      return (
+                        colLimpa === sClean ||
+                        colLimpa.includes(sClean) ||
+                        sClean.includes(colLimpa)
+                      )
+                    })
               if (match) {
                 novoMapeamento[colHeader] = campoDest.campo
                 break
@@ -339,6 +348,21 @@ export const GoogleSheetsD2Section: React.FC<GoogleSheetsD2SectionProps> = ({
             }
           }
         })
+
+        if (baseKey === 'historico_picador') {
+          const colunaStatus = res.cabecalhos.find((header) => {
+            const normalizado = header.toLowerCase().replace(/[^a-z0-9]/g, '')
+            return normalizado === 'status' || normalizado === 'statuspicador'
+          })
+          if (colunaStatus) {
+            Object.keys(novoMapeamento).forEach((header) => {
+              if (novoMapeamento[header] === 'status_picador' && header !== colunaStatus) {
+                delete novoMapeamento[header]
+              }
+            })
+            novoMapeamento[colunaStatus] = 'status_picador'
+          }
+        }
 
         // Atualiza a coluna de ID se sugerida e não configurada
         const colunaIdAtualizada =

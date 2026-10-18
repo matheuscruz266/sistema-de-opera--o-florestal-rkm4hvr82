@@ -776,7 +776,7 @@ export const BASES_IMPORTADOR_CATALOGO: BaseImportadorDefinicao[] = [
         campo: 'status_picador',
         label: 'Status Picador (filtro de importação)',
         obrigatorio: false,
-        sugestoesCabecalho: ['status_picador', 'status picador'],
+        sugestoesCabecalho: ['status', 'status_picador', 'status picador'],
       },
       {
         campo: 'conversao_cavaco_id',
