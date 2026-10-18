@@ -34,11 +34,25 @@ export const apiService = {
   async getUsuarios(): Promise<UserRecord[]> {
     return await pb.collection('users').getFullList<UserRecord>({ sort: 'name' })
   },
-  async createUsuario(data: Partial<UserRecord> & { password?: string }): Promise<UserRecord> {
-    return await pb.collection('users').create<UserRecord>(data)
+  async createUsuario(
+    data: Partial<UserRecord> & { password: string; passwordConfirm?: string },
+  ): Promise<UserRecord> {
+    const passwordConfirm = data.passwordConfirm || data.password
+    return await pb.collection('users').create<UserRecord>({
+      ...data,
+      passwordConfirm,
+      must_change_password: true,
+    })
   },
   async updateUsuario(id: string, data: Partial<UserRecord>): Promise<UserRecord> {
     return await pb.collection('users').update<UserRecord>(id, data)
+  },
+  async alterarSenhaPrimeiroAcesso(id: string, password: string): Promise<UserRecord> {
+    return await pb.collection('users').update<UserRecord>(id, {
+      password,
+      passwordConfirm: password,
+      must_change_password: false,
+    })
   },
   async deleteUsuario(id: string): Promise<boolean> {
     return await pb.collection('users').delete(id)

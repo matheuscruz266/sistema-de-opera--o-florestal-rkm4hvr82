@@ -84,6 +84,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         name: authRecord.name || authRecord.email,
         papel: (authRecord.papel as any) || 'operador',
         status: authRecord.status ?? true,
+        must_change_password: authRecord.must_change_password ?? false,
       })
     } else {
       setUser(null)
@@ -99,6 +100,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           name: model.name || model.email,
           papel: (model.papel as any) || 'operador',
           status: model.status ?? true,
+          must_change_password: model.must_change_password ?? false,
         })
       } else {
         setUser(null)

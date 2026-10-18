@@ -52,6 +52,12 @@
           "system": false
         },
         {
+          "name": "must_change_password",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
           "name": "app_sheet_id",
           "type": "text",
           "required": false,

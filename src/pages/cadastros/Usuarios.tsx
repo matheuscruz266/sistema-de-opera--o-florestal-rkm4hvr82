@@ -41,9 +41,46 @@ import {
   ShieldCheck,
   HardHat,
   FileCheck,
+  Copy,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuth } from '@/context/AuthContext'
+
+function gerarSenhaTemporaria(): string {
+  const grupos = [
+    'ABCDEFGHJKLMNPQRSTUVWXYZ',
+    'abcdefghijkmnopqrstuvwxyz',
+    '23456789',
+    '!@#$%&*',
+  ]
+  const todosCaracteres = grupos.join('')
+  const bytes = new Uint32Array(20)
+  window.crypto.getRandomValues(bytes)
+  const senha = grupos.map((grupo, index) => grupo[bytes[index] % grupo.length])
+
+  for (let index = grupos.length; index < bytes.length; index++) {
+    senha.push(todosCaracteres[bytes[index] % todosCaracteres.length])
+  }
+  for (let index = senha.length - 1; index > 0; index--) {
+    const swapIndex = bytes[index] % (index + 1)
+    ;[senha[index], senha[swapIndex]] = [senha[swapIndex], senha[index]]
+  }
+
+  return senha.join('')
+}
+
+function mensagemErroUsuario(error: any): string {
+  const fields = error?.data?.data || error?.response?.data?.data
+  if (fields?.email?.code === 'validation_not_unique') return 'Este e-mail já está cadastrado.'
+  if (fields && typeof fields === 'object') {
+    const [field, detail] = Object.entries(fields)[0] || []
+    if (field && detail && typeof detail === 'object' && 'message' in detail) {
+      const label = field === 'passwordConfirm' ? 'Confirmação de senha' : field
+      return `${label}: ${detail.message}`
+    }
+  }
+  return error?.message || 'Erro ao salvar usuário.'
+}
 
 export default function UsuariosPage() {
   const { user: currentUser } = useAuth()
@@ -60,7 +97,11 @@ export default function UsuariosPage() {
   // Form states
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
+  const [temporaryPassword, setTemporaryPassword] = useState('')
+  const [credentialDialogOpen, setCredentialDialogOpen] = useState(false)
+  const [createdCredential, setCreatedCredential] = useState<{ email: string; password: string } | null>(
+    null,
+  )
   const [papel, setPapel] = useState<PapelUsuario>('operador')
   const [status, setStatus] = useState<boolean>(true)
 
@@ -85,7 +126,7 @@ export default function UsuariosPage() {
     setEditingItem(null)
     setName('')
     setEmail('')
-    setPassword('Skip@Pass')
+    setTemporaryPassword(gerarSenhaTemporaria())
     setPapel('operador')
     setStatus(true)
     setModalOpen(true)
@@ -95,7 +136,6 @@ export default function UsuariosPage() {
     setEditingItem(u)
     setName(u.name || '')
     setEmail(u.email)
-    setPassword('')
     setPapel(u.papel || 'operador')
     setStatus(u.status ?? true)
     setModalOpen(true)
@@ -122,18 +162,21 @@ export default function UsuariosPage() {
         await apiService.createUsuario({
           name: name.trim(),
           email: email.trim(),
-          password: password || 'Skip@Pass',
+          password: temporaryPassword,
+          passwordConfirm: temporaryPassword,
           papel,
           status: true,
         })
-        toast.success('Novo usuário cadastrado com sucesso')
+        setCreatedCredential({ email: email.trim(), password: temporaryPassword })
+        setCredentialDialogOpen(true)
+        toast.success('Usuário cadastrado. Compartilhe a senha temporária com segurança.')
       }
 
       setModalOpen(false)
       loadData()
     } catch (err: any) {
       console.error(err)
-      toast.error(err.message || 'Erro ao salvar usuário')
+      toast.error(mensagemErroUsuario(err))
     } finally {
       setSaving(false)
     }
@@ -273,6 +316,14 @@ export default function UsuariosPage() {
                       >
                         {item.status !== false ? 'Ativo' : 'Inativo'}
                       </Badge>
+                      {item.must_change_password && (
+                        <Badge
+                          variant="outline"
+                          className="mt-1 bg-amber-50 text-amber-800 border-amber-300"
+                        >
+                          Primeiro acesso
+                        </Badge>
+                      )}
                     </td>
                     <td className="py-3 px-4 text-right">
                       <div className="flex items-center justify-end gap-1">
@@ -342,16 +393,9 @@ export default function UsuariosPage() {
             </div>
 
             {!editingItem && (
-              <div className="space-y-1">
-                <Label className="text-xs">Senha Inicial (mínimo 8 caracteres)</Label>
-                <Input
-                  type="password"
-                  placeholder="Skip@Pass"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="h-9 font-mono"
-                  required
-                />
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-950">
+                Uma senha temporária segura será gerada após o cadastro. O usuário deverá criar sua
+                senha pessoal no primeiro acesso.
               </div>
             )}
 
@@ -400,6 +444,69 @@ export default function UsuariosPage() {
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={credentialDialogOpen}
+        onOpenChange={(open) => {
+          setCredentialDialogOpen(open)
+          if (!open) setCreatedCredential(null)
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-[#1A2E1A]">Usuário cadastrado</DialogTitle>
+            <DialogDescription>
+              Compartilhe esta senha temporária com o usuário por um canal seguro. Ela só será
+              exibida agora e será obrigatório substituí-la no primeiro acesso.
+            </DialogDescription>
+          </DialogHeader>
+          {createdCredential && (
+            <div className="space-y-3">
+              <div className="text-sm">
+                Conta: <strong>{createdCredential.email}</strong>
+              </div>
+              <div className="flex gap-2">
+                <Input
+                  aria-label="Senha temporária gerada"
+                  className="font-mono"
+                  readOnly
+                  value={createdCredential.password}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  aria-label="Copiar senha temporária"
+                  onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText(createdCredential.password)
+                      toast.success('Senha temporária copiada.')
+                    } catch (error) {
+                      console.error('Falha ao copiar senha temporária:', error)
+                      toast.error('Não foi possível copiar a senha. Selecione e copie manualmente.')
+                    }
+                  }}
+                >
+                  <Copy className="h-4 w-4" />
+                </Button>
+              </div>
+              <p className="text-xs text-amber-800">
+                Não reutilize nem envie esta senha em canais públicos.
+              </p>
+            </div>
+          )}
+          <DialogFooter>
+            <Button
+              onClick={() => {
+                setCredentialDialogOpen(false)
+                setCreatedCredential(null)
+              }}
+              className="bg-[#1B5E20] hover:bg-[#14521A] text-white"
+            >
+              Concluir
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 

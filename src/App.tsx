@@ -6,6 +6,7 @@ import { Toaster } from './components/ui/sonner'
 // Páginas de Autenticação e Entrada
 import Index from './pages/Index'
 import Login from './pages/Login'
+import AlterarSenhaPrimeiroAcessoPage from './pages/AlterarSenhaPrimeiroAcesso'
 import NotFound from './pages/NotFound'
 
 // Dashboard Principal
@@ -50,6 +51,7 @@ export function App() {
         <Routes>
           {/* Rotas Públicas */}
           <Route path="/login" element={<Login />} />
+          <Route path="/alterar-senha" element={<AlterarSenhaPrimeiroAcessoPage />} />
           <Route path="/" element={<Index />} />
 
           {/* Rotas Autenticadas protegidas com Layout Global */}

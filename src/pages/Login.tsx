@@ -32,9 +32,9 @@ export default function Login() {
     setLoading(true)
     setErrorMsg('')
     try {
-      await pb.collection('users').authWithPassword(email.trim(), password)
+      const auth = await pb.collection('users').authWithPassword(email.trim(), password)
       toast.success('Login realizado com sucesso!')
-      navigate('/')
+      navigate(auth.record.must_change_password ? '/alterar-senha' : '/')
     } catch (err: any) {
       console.error(err)
       setErrorMsg(err.message || 'Credenciais inválidas. Verifique seu e-mail e senha.')

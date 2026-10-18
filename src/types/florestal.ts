@@ -8,6 +8,7 @@ export interface UserRecord {
   name?: string
   papel?: PapelUsuario
   status?: boolean
+  must_change_password?: boolean
   created?: string
   updated?: string
 }
