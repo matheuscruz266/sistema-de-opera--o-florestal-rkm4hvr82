@@ -321,29 +321,221 @@ export const GoogleSheetsD2Section: React.FC<GoogleSheetsD2SectionProps> = ({
         const baseDef = BASES_IMPORTADOR_CATALOGO.find((b) => b.key === baseKey)
         const novoMapeamento: Record<string, string> = { ...baseItem.mapeamento_campos }
 
-        // Sugere mapeamento por similaridade
+        // Função utilitária robusta de normalização (sem acentos, minúsculas, apenas alfanuméricos)
+        const normalizarTexto = (txt: string) =>
+          txt
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .toLowerCase()
+            .replace(/[^a-z0-9]/g, '')
+
+        // Mapeia por prioridade:
+        // 1ª passada: match exato na lista de sugestões / nome de campo (normalizados)
+        // 2ª passada: match exato de sinônimos conhecidos
+        // 3ª passada: prefixo / substring se muito evidente (comprimento >= 4)
         res.cabecalhos.forEach((colHeader) => {
-          const colLimpa = colHeader.toLowerCase().replace(/[^a-z0-9_]/g, '')
-          if (!novoMapeamento[colHeader] && baseDef) {
-            // Checa correspondência com campos de destino
+          if (novoMapeamento[colHeader] || !baseDef) return
+          const colNorm = normalizarTexto(colHeader)
+          if (!colNorm) return
+
+          // 1. Match exato normalizado
+          for (const campoDest of baseDef.camposDestino) {
+            const candidatos = [
+              campoDest.campo,
+              campoDest.label,
+              ...(campoDest.sugestoesCabecalho || []),
+            ]
+            const matchExato = candidatos.some((cand) => normalizarTexto(cand) === colNorm)
+            if (matchExato) {
+              novoMapeamento[colHeader] = campoDest.campo
+              return
+            }
+          }
+
+          // 2. Regras semânticas específicas se ainda não mapeado
+          if (
+            (colNorm === 'email' || colNorm.includes('email') || colNorm === 'login') &&
+            baseDef.camposDestino.some((c) => c.campo === 'email_registro')
+          ) {
+            novoMapeamento[colHeader] = 'email_registro'
+            return
+          }
+
+          if (
+            (colNorm === 'operador' ||
+              colNorm.includes('motorista') ||
+              colNorm.includes('operador')) &&
+            baseDef.camposDestino.some((c) => c.campo === 'operador')
+          ) {
+            novoMapeamento[colHeader] = 'operador'
+            return
+          }
+
+          if (
+            (colNorm === 'fazenda' || colNorm.includes('fazenda') || colNorm === 'propriedade') &&
+            baseDef.camposDestino.some((c) => c.campo === 'fazenda_id')
+          ) {
+            novoMapeamento[colHeader] = 'fazenda_id'
+            return
+          }
+
+          if (
+            (colNorm === 'talhao' || colNorm.includes('talhao')) &&
+            baseDef.camposDestino.some((c) => c.campo === 'talhao_origem_id')
+          ) {
+            novoMapeamento[colHeader] = 'talhao_origem_id'
+            return
+          }
+
+          if (
+            (colNorm === 'talhao' || colNorm.includes('talhao')) &&
+            baseDef.camposDestino.some((c) => c.campo === 'talhao_id')
+          ) {
+            novoMapeamento[colHeader] = 'talhao_id'
+            return
+          }
+
+          if (
+            (colNorm === 'pilha' || colNorm.includes('pilha')) &&
+            baseDef.camposDestino.some((c) => c.campo === 'pilha_destino_id')
+          ) {
+            novoMapeamento[colHeader] = 'pilha_destino_id'
+            return
+          }
+
+          if (
+            (colNorm === 'pilha' || colNorm.includes('pilha')) &&
+            baseDef.camposDestino.some((c) => c.campo === 'pilha_origem_id')
+          ) {
+            novoMapeamento[colHeader] = 'pilha_origem_id'
+            return
+          }
+
+          if (
+            (colNorm === 'status' || colNorm === 'statusevento') &&
+            baseDef.camposDestino.some((c) => c.campo === 'status_evento')
+          ) {
+            novoMapeamento[colHeader] = 'status_evento'
+            return
+          }
+
+          if (
+            (colNorm === 'statushis' || colNorm === 'statushistorico') &&
+            baseDef.camposDestino.some((c) => c.campo === 'status_his')
+          ) {
+            novoMapeamento[colHeader] = 'status_his'
+            return
+          }
+
+          if (
+            (colNorm === 'veiculoabastecimento' ||
+              colNorm.includes('abastecimento') ||
+              colNorm === 'comboio') &&
+            baseDef.camposDestino.some((c) => c.campo === 'veiculo_abastecimento')
+          ) {
+            novoMapeamento[colHeader] = 'veiculo_abastecimento'
+            return
+          }
+
+          if (
+            (colNorm === 'horimetro' || colNorm === 'bt') &&
+            baseDef.camposDestino.some((c) => c.campo === 'horimetro')
+          ) {
+            novoMapeamento[colHeader] = 'horimetro'
+            return
+          }
+
+          if (
+            (colNorm === 'litros' || colNorm === 'diesel' || colNorm === 'combustivel') &&
+            baseDef.camposDestino.some((c) => c.campo === 'litros')
+          ) {
+            novoMapeamento[colHeader] = 'litros'
+            return
+          }
+
+          if (
+            (colNorm === 'motivo' || colNorm === 'justificativa') &&
+            baseDef.camposDestino.some((c) => c.campo === 'motivo_id')
+          ) {
+            novoMapeamento[colHeader] = 'motivo_id'
+            return
+          }
+
+          if (
+            (colNorm === 'fim' || colNorm === 'datafim' || colNorm === 'horafim') &&
+            baseDef.camposDestino.some((c) => c.campo === 'fim')
+          ) {
+            novoMapeamento[colHeader] = 'fim'
+            return
+          }
+
+          if (
+            (colNorm === 'inicio' || colNorm === 'datainicio' || colNorm === 'horainicio') &&
+            baseDef.camposDestino.some((c) => c.campo === 'inicio')
+          ) {
+            novoMapeamento[colHeader] = 'inicio'
+            return
+          }
+
+          if (
+            (colNorm === 'tempo' || colNorm === 'duracao' || colNorm === 'tempohoras') &&
+            baseDef.camposDestino.some((c) => c.campo === 'tempo')
+          ) {
+            novoMapeamento[colHeader] = 'tempo'
+            return
+          }
+
+          if (
+            (colNorm === 'srtoras' ||
+              colNorm === 'volumesr' ||
+              colNorm === 'volumestereo' ||
+              colNorm === 'sr') &&
+            baseDef.camposDestino.some((c) => c.campo === 'volume_sr')
+          ) {
+            novoMapeamento[colHeader] = 'volume_sr'
+            return
+          }
+
+          if (
+            (colNorm === 'equipamento' ||
+              colNorm === 'placabaldeio' ||
+              colNorm === 'caminhaobaldeio') &&
+            baseDef.camposDestino.some((c) => c.campo === 'caminhao_baldeio_id')
+          ) {
+            novoMapeamento[colHeader] = 'caminhao_baldeio_id'
+            return
+          }
+
+          if (
+            (colNorm === 'equipamento' || colNorm === 'maquina') &&
+            baseDef.camposDestino.some((c) => c.campo === 'maquina_id')
+          ) {
+            novoMapeamento[colHeader] = 'maquina_id'
+            return
+          }
+
+          if (
+            (colNorm === 'equipamento' || colNorm === 'picador') &&
+            baseDef.camposDestino.some((c) => c.campo === 'picador_maquina_id')
+          ) {
+            novoMapeamento[colHeader] = 'picador_maquina_id'
+            return
+          }
+
+          // 3. Substring bidirecional cautelosa (mínimo 4 caracteres para evitar falso positivo)
+          if (colNorm.length >= 4) {
             for (const campoDest of baseDef.camposDestino) {
-              const sugestoes = campoDest.sugestoesCabecalho || [campoDest.campo]
-              const match =
-                campoDest.campo === 'status_picador'
-                  ? ['status', 'status_picador', 'status picador'].some(
-                      (s) => colLimpa === s.toLowerCase().replace(/[^a-z0-9_]/g, ''),
-                    )
-                  : sugestoes.some((s) => {
-                      const sClean = s.toLowerCase().replace(/[^a-z0-9_]/g, '')
-                      return (
-                        colLimpa === sClean ||
-                        colLimpa.includes(sClean) ||
-                        sClean.includes(colLimpa)
-                      )
-                    })
-              if (match) {
+              const sugestoes = [campoDest.campo, ...(campoDest.sugestoesCabecalho || [])]
+              const matchParcial = sugestoes.some((s) => {
+                const sNorm = normalizarTexto(s)
+                return (
+                  sNorm.length >= 4 &&
+                  (colNorm === sNorm || colNorm.includes(sNorm) || sNorm.includes(colNorm))
+                )
+              })
+              if (matchParcial) {
                 novoMapeamento[colHeader] = campoDest.campo
-                break
+                return
               }
             }
           }
@@ -351,16 +543,30 @@ export const GoogleSheetsD2Section: React.FC<GoogleSheetsD2SectionProps> = ({
 
         if (baseKey === 'historico_picador') {
           const colunaStatus = res.cabecalhos.find((header) => {
-            const normalizado = header.toLowerCase().replace(/[^a-z0-9]/g, '')
-            return normalizado === 'status' || normalizado === 'statuspicador'
+            const normalizado = normalizarTexto(header)
+            return (
+              normalizado === 'status' ||
+              normalizado === 'statuspicador' ||
+              normalizado === 'statusevento'
+            )
           })
           if (colunaStatus) {
             Object.keys(novoMapeamento).forEach((header) => {
-              if (novoMapeamento[header] === 'status_picador' && header !== colunaStatus) {
+              if (
+                (novoMapeamento[header] === 'status_picador' ||
+                  novoMapeamento[header] === 'status_evento') &&
+                header !== colunaStatus
+              ) {
                 delete novoMapeamento[header]
               }
             })
-            novoMapeamento[colunaStatus] = 'status_picador'
+            // Mapeia para status_evento se existir no catálogo, ou status_picador
+            const campoDestinoStatus = baseDef?.camposDestino.some(
+              (c) => c.campo === 'status_evento',
+            )
+              ? 'status_evento'
+              : 'status_picador'
+            novoMapeamento[colunaStatus] = campoDestinoStatus
           }
         }
 
