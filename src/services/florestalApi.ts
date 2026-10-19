@@ -288,7 +288,7 @@ export const apiService = {
   async getHistoricoFeller(): Promise<HistoricoFeller[]> {
     return await pb.collection('historico_feller').getFullList<HistoricoFeller>({
       sort: '-data_operacao',
-      expand: 'talhao_id,maquina_id',
+      expand: 'talhao_id,maquina_id,fazenda_id,motivo_id',
     })
   },
   async createHistoricoFeller(data: Partial<HistoricoFeller>): Promise<HistoricoFeller> {

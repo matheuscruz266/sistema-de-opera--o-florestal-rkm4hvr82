@@ -11,6 +11,7 @@ import NotFound from './pages/NotFound'
 
 // Dashboard Principal
 import DashboardPage from './pages/Dashboard'
+import AnaliseFellerPage from './pages/historicos/AnaliseFeller'
 
 // Núcleo A: Cadastros Base
 import FazendasPage from './pages/cadastros/Fazendas'
@@ -58,6 +59,7 @@ export function App() {
           {/* Rotas Autenticadas protegidas com Layout Global */}
           <Route element={<Layout />}>
             <Route path="/dashboard" element={<DashboardPage />} />
+            <Route path="/analise/feller" element={<AnaliseFellerPage />} />
 
             {/* Operação & Controle (Núcleo C & E) */}
             <Route path="/toracerta" element={<ToraCertaPage />} />
