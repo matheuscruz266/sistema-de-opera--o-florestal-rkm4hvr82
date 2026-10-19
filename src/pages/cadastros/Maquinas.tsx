@@ -117,7 +117,7 @@ export default function MaquinasPage() {
         tipo,
         bt: bt.trim(),
         usuario_responsavel: usuarioResp.trim(),
-        fazenda_id: fazendaId || undefined,
+        fazenda_id: (fazendaId && fazendaId !== '__nenhuma__') ? fazendaId : undefined,
         status,
       }
 
@@ -364,6 +364,7 @@ export default function MaquinasPage() {
                     <SelectValue placeholder="Opcional" />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="__nenhuma__">(Nenhuma - Sem base fixa)</SelectItem>
                     {fazendas.map((f) => (
                       <SelectItem key={f.id} value={f.id}>
                         {f.codigo} - {f.nome}

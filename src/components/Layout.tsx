@@ -4,6 +4,7 @@ import { useAuth } from '@/context/AuthContext'
 import {
   Trees,
   LayoutDashboard,
+  ChartNoAxesCombined,
   Building2,
   MapPin,
   Tractor,
@@ -98,6 +99,19 @@ export default function Layout() {
             >
               <LayoutDashboard className="w-4 h-4 text-[#1B5E20]" />
               <span className="text-sm">Dashboard</span>
+            </NavLink>
+            <NavLink
+              to="/analise/feller"
+              className={({ isActive }) =>
+                `mt-1 flex items-center gap-2.5 px-3 py-2 rounded-lg font-medium transition-all ${
+                  isActive
+                    ? 'bg-[#E8F5E9] text-[#1B5E20] shadow-xs'
+                    : 'text-[#5A6D5A] hover:bg-neutral-100 hover:text-[#1A2E1A]'
+                }`
+              }
+            >
+              <ChartNoAxesCombined className="w-4 h-4 text-[#1B5E20]" />
+              <span className="text-sm">Análise do Feller</span>
             </NavLink>
           </div>
 
@@ -622,6 +636,17 @@ export default function Layout() {
               >
                 <LayoutDashboard className="w-4 h-4" />
                 Dashboard Geral
+              </NavLink>
+              <NavLink
+                to="/analise/feller"
+                className={({ isActive }) =>
+                  `flex items-center gap-2.5 px-3 py-2 rounded-lg font-medium text-sm ${
+                    isActive ? 'text-[#1B5E20] bg-[#E8F5E9]' : 'text-[#1A2E1A]'
+                  }`
+                }
+              >
+                <ChartNoAxesCombined className="w-4 h-4 text-[#1B5E20]" />
+                Análise do Feller
               </NavLink>
 
               <div className="space-y-1">

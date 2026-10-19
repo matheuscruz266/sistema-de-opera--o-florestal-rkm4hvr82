@@ -83,6 +83,7 @@ export default function ConciliacaoPage() {
   const [parecerInvestigacao, setParecerInvestigacao] = useState('')
 
   // Form Solicitar / Aprovar Ajuste
+  const [pilhaAjusteId, setPilhaAjusteId] = useState('')
   const [tipoAjuste, setTipoAjuste] = useState<
     'entrada_correcao' | 'baixa_perda' | 'recalibracao_metodo' | 'outros'
   >('baixa_perda')
@@ -191,6 +192,7 @@ export default function ConciliacaoPage() {
   const handleOpenAjuste = (alerta?: ConciliacaoAlerta) => {
     if (alerta) {
       setAlertaDetalhe(alerta)
+      setPilhaAjusteId(alerta.pilha_id)
       // Sugere o volume ajustado para zerar a diferença (invertendo o sinal da diferença)
       // diferenca_m3 = saldo_calculado - inventario_fisico
       // Para trazer o saldo calculado ao físico: volume_ajustado = inventario - saldo = -diferenca_m3
@@ -202,6 +204,7 @@ export default function ConciliacaoPage() {
       )
     } else {
       setAlertaDetalhe(null)
+      setPilhaAjusteId(pilhas[0]?.id || '')
       setVolumeAjustadoM3('')
       setTipoAjuste('baixa_perda')
       setJustificativaAjuste('')
@@ -227,9 +230,9 @@ export default function ConciliacaoPage() {
       return
     }
 
-    const pilhaIdAlvo = alertaDetalhe ? alertaDetalhe.pilha_id : pilhas[0]?.id
+    const pilhaIdAlvo = alertaDetalhe ? alertaDetalhe.pilha_id : pilhaAjusteId
     if (!pilhaIdAlvo) {
-      toast.error('Pilha não identificada.')
+      toast.error('Selecione a pilha que receberá o ajuste.')
       return
     }
 
@@ -895,6 +898,31 @@ export default function ConciliacaoPage() {
           </DialogHeader>
 
           <form onSubmit={handleSalvarAjuste} className="space-y-4">
+            {alertaDetalhe ? (
+              <div className="p-2.5 bg-[#F4F6F4] rounded-md border border-[#E0E0E0] text-xs">
+                <span className="text-[#5A6D5A]">Pilha vinculada ao Alerta: </span>
+                <span className="font-semibold text-[#1A2E1A]">
+                  {alertaDetalhe.expand?.pilha_id?.codigo || alertaDetalhe.pilha_id}
+                </span>
+              </div>
+            ) : (
+              <div className="space-y-1">
+                <Label className="text-xs font-semibold">Pilha a Ajustar *</Label>
+                <Select value={pilhaAjusteId} onValueChange={setPilhaAjusteId}>
+                  <SelectTrigger className="h-9 text-xs">
+                    <SelectValue placeholder="Selecione a Pilha" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {pilhas.map((p) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.codigo} — {p.nome || p.produto}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label className="text-xs font-semibold">Tipo de Ajuste *</Label>

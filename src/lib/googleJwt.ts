@@ -44,13 +44,19 @@ export async function createGoogleServiceAccountJwt(
     throw new Error('client_email e private_key são obrigatórios.')
   }
 
+  if (!window.isSecureContext || !window.crypto?.subtle) {
+    throw new Error(
+      'A autenticação do Google exige um contexto seguro. Acesse por HTTPS ou use http://localhost; endereços IP ou nomes de rede local via HTTP não oferecem essa API.',
+    )
+  }
+
   // 1. Importar chave privada PKCS#8 via Web Crypto API nativa
   const keyBuffer = pemToArrayBuffer(privateKeyPem)
   const cryptoKey = await window.crypto.subtle.importKey(
     'pkcs8',
     keyBuffer,
     {
-      name: 'RSASSA-PKPKCS1-v1_5' in window.crypto ? 'RSASSA-PKCS1-v1_5' : 'RSASSA-PKCS1-v1_5',
+      name: 'RSASSA-PKCS1-v1_5',
       hash: { name: 'SHA-256' },
     },
     false,
