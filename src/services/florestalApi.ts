@@ -27,6 +27,7 @@ import {
   GoogleSheetsConfigRecord,
   GoogleSheetsTestResponse,
   GoogleSheetsSyncResponse,
+  ImportadorBaseConfigItem,
 } from '@/types/florestal'
 
 export const apiService = {
@@ -575,20 +576,15 @@ export const apiService = {
 
   // Obter ou criar configuração da integração Google Sheets
   async getGoogleSheetsConfig(): Promise<GoogleSheetsConfigRecord | null> {
-    try {
-      const records = await pb
-        .collection('google_sheets_config')
-        .getList<GoogleSheetsConfigRecord>(1, 1, {
-          sort: '-created',
-        })
-      if (records.items.length > 0) {
-        return records.items[0]
-      }
-      return null
-    } catch (err) {
-      console.warn('Erro ao carregar google_sheets_config:', err)
-      return null
+    const records = await pb
+      .collection('google_sheets_config')
+      .getList<GoogleSheetsConfigRecord>(1, 1, {
+        sort: '-created',
+      })
+    if (records.items.length > 0) {
+      return records.items[0]
     }
+    return null
   },
 
   // Salvar configuração (cria ou atualiza)
@@ -601,9 +597,40 @@ export const apiService = {
         sort: '-created',
       })
     if (configs.items.length > 0) {
+      const atual = configs.items[0]
+      const payloadLimpo: Record<string, any> = {}
+      const chaves: (keyof GoogleSheetsConfigRecord)[] = [
+        'nome',
+        'spreadsheet_id',
+        'sheet_range',
+        'client_email',
+        'project_id',
+        'private_key',
+        'is_ativa',
+        'sincronizacao_automatica',
+        'intervalo_minutos',
+        'linhas_ingeridas_total',
+        'ultimo_status',
+        'ultimo_erro',
+      ]
+      chaves.forEach((k) => {
+        if (dados[k] !== undefined) {
+          payloadLimpo[k] = dados[k]
+        }
+      })
+      // Preservar campos sensíveis se não vieram na atualização
+      if (!payloadLimpo.client_email && atual.client_email) {
+        payloadLimpo.client_email = atual.client_email
+      }
+      if (!payloadLimpo.private_key && atual.private_key) {
+        payloadLimpo.private_key = atual.private_key
+      }
+      if (!payloadLimpo.project_id && atual.project_id) {
+        payloadLimpo.project_id = atual.project_id
+      }
       return await pb
         .collection('google_sheets_config')
-        .update<GoogleSheetsConfigRecord>(configs.items[0].id, dados)
+        .update<GoogleSheetsConfigRecord>(atual.id, payloadLimpo)
     } else {
       return await pb.collection('google_sheets_config').create<GoogleSheetsConfigRecord>({
         nome: dados.nome || 'D2 Picador BRF Toledo',
@@ -675,48 +702,81 @@ export const apiService = {
   // ==========================================
 
   // Buscar configurações salvas por base
-  async getImportadorBasesConfig(): Promise<any[]> {
-    try {
-      return await pb.collection('importador_bases_config').getFullList({
-        sort: 'ordem_execucao',
-      })
-    } catch (err) {
-      console.warn('Erro ao carregar importador_bases_config:', err)
-      return []
-    }
+  async getImportadorBasesConfig(): Promise<ImportadorBaseConfigItem[]> {
+    return await pb.collection('importador_bases_config').getFullList<ImportadorBaseConfigItem>({
+      sort: 'ordem_execucao',
+    })
   },
 
   // Salvar configuração de uma base específica
-  async salvarImportadorBaseConfig(baseData: {
-    base_key: string
-    base_nome: string
-    destino_tabela: string
-    aba_planilha: string
-    coluna_id_unico: string
-    regra_duplicidade: string
-    ordem_execucao: number
-    is_ativa: boolean
-    mapeamento_campos: Record<string, string>
-    cabecalhos_detectados?: string[]
-  }): Promise<any> {
-    try {
-      const existing = await pb.collection('importador_bases_config').getList(1, 1, {
+  async salvarImportadorBaseConfig(
+    baseData:
+      | ImportadorBaseConfigItem
+      | (Pick<
+          ImportadorBaseConfigItem,
+          | 'base_key'
+          | 'base_nome'
+          | 'destino_tabela'
+          | 'aba_planilha'
+          | 'coluna_id_unico'
+          | 'regra_duplicidade'
+          | 'ordem_execucao'
+          | 'is_ativa'
+          | 'mapeamento_campos'
+        > & {
+          cabecalhos_detectados?: string[]
+        }),
+  ): Promise<ImportadorBaseConfigItem> {
+    const payload = {
+      base_key: baseData.base_key,
+      base_nome: baseData.base_nome,
+      destino_tabela: baseData.destino_tabela,
+      aba_planilha: baseData.aba_planilha,
+      coluna_id_unico: baseData.coluna_id_unico,
+      regra_duplicidade: baseData.regra_duplicidade,
+      ordem_execucao: baseData.ordem_execucao,
+      is_ativa: baseData.is_ativa,
+      mapeamento_campos: baseData.mapeamento_campos,
+      cabecalhos_detectados: baseData.cabecalhos_detectados ?? [],
+    }
+
+    const existing = await pb
+      .collection('importador_bases_config')
+      .getList<ImportadorBaseConfigItem>(1, 1, {
         filter: `base_key = '${baseData.base_key}'`,
       })
 
-      if (existing.items.length > 0) {
-        return await pb.collection('importador_bases_config').update(existing.items[0].id, baseData)
-      } else {
-        return await pb.collection('importador_bases_config').create(baseData)
-      }
-    } catch (err: any) {
-      console.error('Erro ao salvar configuração da base:', err)
-      throw err
+    if (existing.items.length > 0) {
+      return await pb
+        .collection('importador_bases_config')
+        .update<ImportadorBaseConfigItem>(existing.items[0].id!, payload)
+    } else {
+      return await pb
+        .collection('importador_bases_config')
+        .create<ImportadorBaseConfigItem>(payload)
     }
   },
 
   // Salvar múltiplas configurações de bases em lote
-  async salvarTodasBasesConfig(configs: any[]): Promise<void> {
+  async salvarTodasBasesConfig(
+    configs: (
+      | ImportadorBaseConfigItem
+      | (Pick<
+          ImportadorBaseConfigItem,
+          | 'base_key'
+          | 'base_nome'
+          | 'destino_tabela'
+          | 'aba_planilha'
+          | 'coluna_id_unico'
+          | 'regra_duplicidade'
+          | 'ordem_execucao'
+          | 'is_ativa'
+          | 'mapeamento_campos'
+        > & {
+          cabecalhos_detectados?: string[]
+        })
+    )[],
+  ): Promise<void> {
     for (const cfg of configs) {
       await this.salvarImportadorBaseConfig(cfg)
     }

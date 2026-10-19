@@ -71,6 +71,8 @@ export default function IntegracoesPage() {
 
   // Google Sheets Config
   const [sheetsConfig, setSheetsConfig] = useState<GoogleSheetsConfigRecord | null>(null)
+  const [sheetsConfigLoaded, setSheetsConfigLoaded] = useState(false)
+  const [sheetsConfigError, setSheetsConfigError] = useState<string | null>(null)
 
   // Dados
   const [credenciais, setCredenciais] = useState<IntegracaoCredencial[]>([])
@@ -139,11 +141,16 @@ export default function IntegracoesPage() {
   // Carregar configuração do Google Sheets
   const loadSheetsConfig = async () => {
     try {
-      const cfg = await apiService.getGoogleSheetsConfig().catch(() => null)
+      const cfg = await apiService.getGoogleSheetsConfig()
       setSheetsConfig(cfg || null)
+      setSheetsConfigLoaded(true)
+      setSheetsConfigError(null)
     } catch (err: any) {
-      console.error(err)
-      setSheetsConfig(null)
+      console.error('Erro ao carregar configuração do Google Sheets:', err)
+      const msg = err?.message || 'Falha ao carregar configuração do Google Sheets'
+      setSheetsConfigError(msg)
+      setSheetsConfigLoaded(false)
+      toast.error(`Erro ao carregar configuração do Google Sheets: ${msg}`)
     }
   }
 
@@ -719,6 +726,9 @@ export default function IntegracoesPage() {
       {/* SEÇÃO 1: CONEXÃO GOOGLE SHEETS D2 (PICADOR BRF TOLEDO) */}
       <GoogleSheetsD2Section
         config={sheetsConfig}
+        isConfigLoaded={sheetsConfigLoaded}
+        configError={sheetsConfigError}
+        onRetryLoadConfig={loadSheetsConfig}
         isAdmin={isAdmin}
         onConfigUpdated={loadSheetsConfig}
         onIngestaoSucesso={() => {

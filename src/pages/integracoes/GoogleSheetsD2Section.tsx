@@ -59,6 +59,9 @@ import { BASES_IMPORTADOR_CATALOGO } from './importadorCatalogo'
 
 interface GoogleSheetsD2SectionProps {
   config: GoogleSheetsConfigRecord | null
+  isConfigLoaded?: boolean
+  configError?: string | null
+  onRetryLoadConfig?: () => void
   isAdmin: boolean
   onConfigUpdated: () => void
   onIngestaoSucesso: () => void
@@ -66,6 +69,9 @@ interface GoogleSheetsD2SectionProps {
 
 export const GoogleSheetsD2Section: React.FC<GoogleSheetsD2SectionProps> = ({
   config,
+  isConfigLoaded = true,
+  configError = null,
+  onRetryLoadConfig,
   isAdmin,
   onConfigUpdated,
   onIngestaoSucesso,
@@ -88,6 +94,10 @@ export const GoogleSheetsD2Section: React.FC<GoogleSheetsD2SectionProps> = ({
 
   // Estado das 14 bases do importador multi-base
   const [basesConfig, setBasesConfig] = useState<Record<string, ImportadorBaseConfigItem>>({})
+  const [basesConfigLoaded, setBasesConfigLoaded] = useState(false)
+  const [basesConfigError, setBasesConfigError] = useState<string | null>(null)
+  const [carregandoBases, setCarregandoBases] = useState(true)
+  const [salvandoMapeamentoModal, setSalvandoMapeamentoModal] = useState(false)
   const [baseSelecionadaModal, setBaseSelecionadaModal] = useState<string | null>(null)
   const [lendoCabecalhosBase, setLendoCabecalhosBase] = useState<string | null>(null)
 
@@ -113,66 +123,77 @@ export const GoogleSheetsD2Section: React.FC<GoogleSheetsD2SectionProps> = ({
     instrucao?: string
   } | null>(null)
 
-  // Inicializa configurações locais das bases ao carregar
-  useEffect(() => {
-    const carregarConfiguracoesBases = async () => {
-      try {
-        const salvas = await apiService.getImportadorBasesConfig().catch(() => [])
-        const mapaSalvo: Record<string, ImportadorBaseConfigItem> = {}
+  // Carrega configurações das bases de forma segura (sem mascarar erros como vazio)
+  const carregarConfiguracoesBases = async () => {
+    setCarregandoBases(true)
+    setBasesConfigError(null)
+    try {
+      const salvas = await apiService.getImportadorBasesConfig()
+      const mapaSalvo: Record<string, ImportadorBaseConfigItem> = {}
 
-        if (Array.isArray(salvas)) {
-          salvas.forEach((item: any) => {
-            if (item?.base_key) {
-              mapaSalvo[item.base_key] = {
-                id: item.id,
-                base_key: item.base_key,
-                base_nome: item.base_nome || item.base_key,
-                destino_tabela: item.destino_tabela || item.base_key,
-                aba_planilha: item.aba_planilha || '',
-                coluna_id_unico: item.coluna_id_unico || '_ID_',
-                regra_duplicidade: item.regra_duplicidade || 'atualizar',
-                ordem_execucao: item.ordem_execucao || 1,
-                is_ativa: item.is_ativa !== false,
-                mapeamento_campos: item.mapeamento_campos || {},
-                cabecalhos_detectados: item.cabecalhos_detectados || [],
-                ultima_importacao: item.ultima_importacao,
-                total_importados: item.total_importados || 0,
-                ultimo_status: item.ultimo_status,
-                ultimo_erro: item.ultimo_erro,
-              }
+      if (Array.isArray(salvas)) {
+        salvas.forEach((item: any) => {
+          if (item?.base_key) {
+            mapaSalvo[item.base_key] = {
+              id: item.id,
+              base_key: item.base_key,
+              base_nome: item.base_nome || item.base_key,
+              destino_tabela: item.destino_tabela || item.base_key,
+              aba_planilha: item.aba_planilha || '',
+              coluna_id_unico: item.coluna_id_unico || '_ID_',
+              regra_duplicidade: item.regra_duplicidade || 'atualizar',
+              ordem_execucao: item.ordem_execucao || 1,
+              is_ativa: item.is_ativa !== false,
+              mapeamento_campos: item.mapeamento_campos || {},
+              cabecalhos_detectados: item.cabecalhos_detectados || [],
+              ultima_importacao: item.ultima_importacao,
+              total_importados: item.total_importados || 0,
+              ultimo_status: item.ultimo_status,
+              ultimo_erro: item.ultimo_erro,
             }
-          })
-        }
-
-        // Garante que todas as 14 bases existam no estado com valores padrão
-        const mapaFinal: Record<string, ImportadorBaseConfigItem> = {}
-        BASES_IMPORTADOR_CATALOGO.forEach((b) => {
-          const salvo = mapaSalvo[b.key]
-          mapaFinal[b.key] = {
-            id: salvo?.id,
-            base_key: b.key,
-            base_nome: b.nome,
-            destino_tabela: b.destino,
-            aba_planilha: salvo?.aba_planilha || b.nome, // Sugere aba com o mesmo nome da base
-            coluna_id_unico: salvo?.coluna_id_unico || '_ID_',
-            regra_duplicidade: (salvo?.regra_duplicidade as RegraDuplicidade) || 'atualizar',
-            ordem_execucao: salvo?.ordem_execucao || b.ordemPadrao,
-            is_ativa: salvo?.is_ativa !== false,
-            mapeamento_campos: salvo?.mapeamento_campos || {},
-            cabecalhos_detectados: salvo?.cabecalhos_detectados || [],
-            ultima_importacao: salvo?.ultima_importacao,
-            total_importados: salvo?.total_importados || 0,
-            ultimo_status: salvo?.ultimo_status,
-            ultimo_erro: salvo?.ultimo_erro,
           }
         })
-
-        setBasesConfig(mapaFinal)
-      } catch (err) {
-        console.error('Erro ao inicializar bases do importador:', err)
       }
-    }
 
+      // Garante que todas as 14 bases existam no estado com valores padrão
+      const mapaFinal: Record<string, ImportadorBaseConfigItem> = {}
+      BASES_IMPORTADOR_CATALOGO.forEach((b) => {
+        const salvo = mapaSalvo[b.key]
+        mapaFinal[b.key] = {
+          id: salvo?.id,
+          base_key: b.key,
+          base_nome: b.nome,
+          destino_tabela: b.destino,
+          aba_planilha: salvo?.aba_planilha || b.nome, // Sugere aba com o mesmo nome da base
+          coluna_id_unico: salvo?.coluna_id_unico || '_ID_',
+          regra_duplicidade: (salvo?.regra_duplicidade as RegraDuplicidade) || 'atualizar',
+          ordem_execucao: salvo?.ordem_execucao || b.ordemPadrao,
+          is_ativa: salvo?.is_ativa !== false,
+          mapeamento_campos: salvo?.mapeamento_campos || {},
+          cabecalhos_detectados: salvo?.cabecalhos_detectados || [],
+          ultima_importacao: salvo?.ultima_importacao,
+          total_importados: salvo?.total_importados || 0,
+          ultimo_status: salvo?.ultimo_status,
+          ultimo_erro: salvo?.ultimo_erro,
+        }
+      })
+
+      setBasesConfig(mapaFinal)
+      setBasesConfigLoaded(true)
+      setBasesConfigError(null)
+    } catch (err: any) {
+      console.error('Erro ao inicializar bases do importador:', err)
+      const msg = err?.message || 'Falha ao carregar configurações das bases do importador.'
+      setBasesConfigError(msg)
+      setBasesConfigLoaded(false)
+      toast.error(`Erro ao carregar configurações das bases: ${msg}`)
+    } finally {
+      setCarregandoBases(false)
+    }
+  }
+
+  // Inicializa configurações locais das bases ao carregar
+  useEffect(() => {
     carregarConfiguracoesBases()
   }, [])
 
@@ -599,11 +620,65 @@ export const GoogleSheetsD2Section: React.FC<GoogleSheetsD2SectionProps> = ({
     }
   }
 
+  // Salvar mapeamento da base ativa no modal
+  const handleSalvarMapeamentoModal = async () => {
+    if (!baseSelecionadaModal) return
+    const baseDef = BASES_IMPORTADOR_CATALOGO.find((b) => b.key === baseSelecionadaModal)
+    const baseAtual = basesConfig[baseSelecionadaModal]
+
+    const itemParaPersistir = {
+      base_key: baseSelecionadaModal,
+      base_nome: baseAtual?.base_nome || baseDef?.nome || baseSelecionadaModal,
+      destino_tabela: baseAtual?.destino_tabela || baseDef?.destino || baseSelecionadaModal,
+      aba_planilha: baseAtual?.aba_planilha || '',
+      coluna_id_unico: baseAtual?.coluna_id_unico || '_ID_',
+      regra_duplicidade: baseAtual?.regra_duplicidade || 'atualizar',
+      ordem_execucao: baseAtual?.ordem_execucao ?? (baseDef?.ordemPadrao || 1),
+      is_ativa: baseAtual?.is_ativa !== false,
+      mapeamento_campos: baseAtual?.mapeamento_campos || {},
+      cabecalhos_detectados: baseAtual?.cabecalhos_detectados || [],
+    }
+
+    setSalvandoMapeamentoModal(true)
+    try {
+      const salvo = await apiService.salvarImportadorBaseConfig(itemParaPersistir)
+      // Atualiza estado local com o ID retornado se novo
+      if (salvo?.id) {
+        setBasesConfig((prev) => ({
+          ...prev,
+          [baseSelecionadaModal]: {
+            ...prev[baseSelecionadaModal],
+            id: salvo.id,
+          },
+        }))
+      }
+      toast.success(`Mapeamento da base "${itemParaPersistir.base_nome}" salvo com sucesso!`)
+      setBaseSelecionadaModal(null)
+    } catch (err: any) {
+      console.error('Erro ao persistir mapeamento da base:', err)
+      const msg = err?.message || 'Falha ao persistir mapeamento no banco de dados.'
+      toast.error(`Erro ao salvar mapeamento: ${msg}`)
+      // Mantém o modal aberto conforme requisito
+    } finally {
+      setSalvandoMapeamentoModal(false)
+    }
+  }
+
   // Salvar configurações gerais e de todas as bases
   const handleSalvarTudo = async (e?: React.FormEvent) => {
     if (e) e.preventDefault()
     if (!isAdmin) {
       toast.error('Apenas Administradores podem salvar configurações da integração.')
+      return
+    }
+
+    if (!isConfigLoaded) {
+      toast.error('Aguarde o carregamento da configuração Google Sheets antes de salvar.')
+      return
+    }
+
+    if (!basesConfigLoaded) {
+      toast.error('Aguarde o carregamento das configurações das bases antes de salvar.')
       return
     }
 
@@ -1058,12 +1133,63 @@ export const GoogleSheetsD2Section: React.FC<GoogleSheetsD2SectionProps> = ({
               </div>
             </div>
 
+            {/* ALERTAS DE FALHA DE CARGA (NÃO MASCARADA) */}
+            {(!isConfigLoaded || Boolean(configError)) && (
+              <div className="p-3 bg-rose-50 border border-rose-200 rounded-lg text-xs text-rose-950 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+                  <span>
+                    <strong>Falha ao carregar configuração Google Sheets:</strong>{' '}
+                    {configError || 'Não foi possível obter a configuração.'}
+                  </span>
+                </div>
+                {onRetryLoadConfig && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={onRetryLoadConfig}
+                    className="h-7 text-xs border-rose-300 text-rose-800 hover:bg-rose-100 shrink-0"
+                  >
+                    <RefreshCw className="w-3 h-3 mr-1" />
+                    Tentar Novamente
+                  </Button>
+                )}
+              </div>
+            )}
+
+            {basesConfigError && (
+              <div className="p-3 bg-rose-50 border border-rose-200 rounded-lg text-xs text-rose-950 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+                  <span>
+                    <strong>Falha ao carregar mapeamento das bases:</strong> {basesConfigError}
+                  </span>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={carregarConfiguracoesBases}
+                  className="h-7 text-xs border-rose-300 text-rose-800 hover:bg-rose-100 shrink-0"
+                >
+                  <RefreshCw className="w-3 h-3 mr-1" />
+                  Recarregar Bases
+                </Button>
+              </div>
+            )}
+
             {/* BOTÕES DE AÇÃO MASTER */}
             <div className="flex flex-wrap items-center gap-2 pt-1">
               {isAdmin && (
                 <Button
                   onClick={handleSalvarTudo}
-                  disabled={salvando}
+                  disabled={salvando || !isConfigLoaded || !basesConfigLoaded || carregandoBases}
+                  title={
+                    !isConfigLoaded || !basesConfigLoaded
+                      ? 'Aguarde o carregamento das configurações para salvar'
+                      : undefined
+                  }
                   className="bg-[#1B5E20] hover:bg-[#14521A] text-white shadow-xs text-xs h-9"
                 >
                   {salvando ? (
@@ -1205,6 +1331,13 @@ export const GoogleSheetsD2Section: React.FC<GoogleSheetsD2SectionProps> = ({
           </div>
 
           {/* TABELA DE CONFIGURAÇÃO DAS 14 BASES */}
+          {carregandoBases && (
+            <div className="p-4 bg-neutral-50 border border-[#DDE4DE] rounded-xl flex items-center justify-center gap-2 text-xs text-[#5A6D5A]">
+              <Loader2 className="w-4 h-4 animate-spin text-[#1B5E20]" />
+              <span>Carregando configurações das bases...</span>
+            </div>
+          )}
+
           <div className="border border-[#DDE4DE] rounded-xl overflow-hidden bg-white shadow-xs">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
@@ -1629,15 +1762,33 @@ export const GoogleSheetsD2Section: React.FC<GoogleSheetsD2SectionProps> = ({
             </div>
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="flex flex-col sm:flex-row items-center justify-between gap-2 pt-2 border-t border-[#DDE4DE]">
             <Button
-              onClick={() => {
-                setBaseSelecionadaModal(null)
-                toast.success('Mapeamento da base salvo localmente!')
-              }}
+              variant="outline"
+              size="sm"
+              onClick={() => setBaseSelecionadaModal(null)}
+              disabled={salvandoMapeamentoModal}
+              className="text-xs border-[#DDE4DE]"
+            >
+              Cancelar
+            </Button>
+
+            <Button
+              onClick={handleSalvarMapeamentoModal}
+              disabled={salvandoMapeamentoModal || !isAdmin}
               className="bg-[#1B5E20] hover:bg-[#14521A] text-white text-xs"
             >
-              Concluir Mapeamento
+              {salvandoMapeamentoModal ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                  Salvando Mapeamento...
+                </>
+              ) : (
+                <>
+                  <Save className="w-3.5 h-3.5 mr-1.5" />
+                  Salvar Mapeamento
+                </>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
