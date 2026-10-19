@@ -80,8 +80,12 @@ export default function RastreabilidadePage() {
       setDescargas(descList)
       setPicadores(picList)
 
-      if (talList.length > 0 && !talhaoSelecionadoId) {
-        setTalhaoSelecionadoId(talList[0].id)
+      if (talList.length > 0) {
+        if (!talhaoSelecionadoId || !talList.some((t) => t.id === talhaoSelecionadoId)) {
+          setTalhaoSelecionadoId(talList[0].id)
+        }
+      } else {
+        setTalhaoSelecionadoId('')
       }
     } catch (err) {
       console.error(err)

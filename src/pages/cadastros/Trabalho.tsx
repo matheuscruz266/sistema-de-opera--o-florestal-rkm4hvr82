@@ -114,9 +114,9 @@ export default function TrabalhoPage() {
         app_sheet_id: appSheetId.trim() || undefined,
         email_trabalho: emailTrabalho.trim(),
         data: data.trim(),
-        fazenda_id: fazendaId || undefined,
+        fazenda_id: (fazendaId && fazendaId !== '__nenhuma__') ? fazendaId : undefined,
         p_ordens: pOrdens.trim(),
-        talhao_id: talhaoId || undefined,
+        talhao_id: (talhaoId && talhaoId !== '__nenhum__') ? talhaoId : undefined,
         localizacao: localizacao.trim(),
         status_atual: statusAtual.trim(),
       }

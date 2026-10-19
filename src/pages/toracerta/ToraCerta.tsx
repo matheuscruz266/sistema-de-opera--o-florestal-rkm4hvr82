@@ -237,7 +237,11 @@ export default function ToraCertaPage() {
       toast.error('Selecione uma pilha cadastrada.')
       return
     }
-    if (volumeOficialCalculado <= 0) {
+    const volFinal = isCorrecao
+      ? (volumeManual !== '' ? Number(volumeManual) : volumeOficialCalculado)
+      : volumeOficialCalculado
+
+    if (volFinal <= 0) {
       toast.error('O volume oficial calculado deve ser maior que zero.')
       return
     }
@@ -255,8 +259,9 @@ export default function ToraCertaPage() {
         talhao_referencia_id: talhaoRefId || undefined,
         data_inventario: dataInventario,
         responsavel_nome: responsavelNome.trim(),
-        metodo_escolhido:
-          metodoOficialAdotado === 'amostragem' ? 'amostragem_diametros' : 'geometrico',
+        metodo_escolhido: isCorrecao
+          ? (itemParaCorrigir?.metodo_escolhido || 'geometrico')
+          : (metodoOficialAdotado === 'amostragem' ? 'amostragem_diametros' : 'geometrico'),
         status_registro: isCorrecao ? 'oficial' : statusRegistro,
         comp_pilha_m: compPilha !== '' ? Number(compPilha) : undefined,
         alt_media_pilha_m: altMediaPilha !== '' ? Number(altMediaPilha) : undefined,
@@ -268,7 +273,7 @@ export default function ToraCertaPage() {
         diametro_medio_cm: diametroMedioCm !== '' ? Number(diametroMedioCm) : undefined,
         comp_medio_toras_m: compMedioToras !== '' ? Number(compMedioToras) : undefined,
         v_solido_amostragem_m3: vSolidoAmostragem > 0 ? vSolidoAmostragem : undefined,
-        volume_oficial_m3: volumeOficialCalculado,
+        volume_oficial_m3: volFinal,
         observacoes: observacoes.trim() || undefined,
       }
 
