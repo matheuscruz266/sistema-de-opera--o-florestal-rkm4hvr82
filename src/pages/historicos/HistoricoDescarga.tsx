@@ -43,11 +43,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuth } from '@/context/AuthContext'
-import {
-  formatHorimetro,
-  formatLitros,
-  formatStatusOperacao,
-} from '@/lib/historicoOperacional'
+import { formatHorimetro, formatLitros, formatStatusOperacao } from '@/lib/historicoOperacional'
 
 export default function HistoricoDescargaPage() {
   const { user } = useAuth()

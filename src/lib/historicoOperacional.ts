@@ -35,7 +35,10 @@ export function formatStatusOperacao(record: StatusRecord) {
   return reason ? `${status} — ${reason}` : status
 }
 
-export function formatLitros(record: { litros?: number | null; combustivel_litros?: number | null }) {
+export function formatLitros(record: {
+  litros?: number | null
+  combustivel_litros?: number | null
+}) {
   const value = record.litros ?? record.combustivel_litros
   return value == null ? '—' : `${value.toLocaleString('pt-BR')} L`
 }

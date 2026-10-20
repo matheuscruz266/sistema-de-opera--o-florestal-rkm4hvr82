@@ -1116,8 +1116,7 @@ export default function IntegracoesPage() {
             </CardContent>
           </Card>
         </TabsContent>
-
-        </Tabs>
+      </Tabs>
 
       {/* MODAL 1: CRIAR NOVA CHAVE */}
       <Dialog open={modalNovaChaveOpen} onOpenChange={setModalNovaChaveOpen}>

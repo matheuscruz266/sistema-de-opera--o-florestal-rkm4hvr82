@@ -32,11 +32,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { Clock, Plus, Search, Edit2, Trash2, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
-import {
-  formatHorimetro,
-  formatLitros,
-  formatStatusOperacao,
-} from '@/lib/historicoOperacional'
+import { formatHorimetro, formatLitros, formatStatusOperacao } from '@/lib/historicoOperacional'
 
 export default function HistoricoSkidderPage() {
   const [registros, setRegistros] = useState<HistoricoSkidder[]>([])
@@ -250,9 +246,7 @@ export default function HistoricoSkidderPage() {
                       <td className="py-3 px-4 text-right font-mono">
                         {formatHorimetro(item.horimetro)}
                       </td>
-                      <td className="py-3 px-4 text-[#5A6D5A]">
-                        {formatStatusOperacao(item)}
-                      </td>
+                      <td className="py-3 px-4 text-[#5A6D5A]">{formatStatusOperacao(item)}</td>
                       <td className="py-3 px-4 text-right font-mono font-semibold text-[#1A2E1A]">
                         {item.horas_trabalhadas.toFixed(1)} h
                       </td>

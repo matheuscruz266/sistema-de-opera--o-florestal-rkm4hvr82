@@ -594,9 +594,7 @@ export default function Layout() {
         {/* RODAPÉ DO SISTEMA */}
         <footer className="h-8 border-t border-[#DDE4DE] bg-white px-4 flex items-center justify-between text-[11px] text-[#5A6D5A] shrink-0">
           <span>Sistema Integrado de Operação Florestal • v1.1</span>
-          <span className="hidden sm:inline">
-            Rastreabilidade Florestal • Sem balança própria • Núcleos A+B+C+E
-          </span>
+          <span className="hidden sm:inline">Rastreabilidade Florestal • Sem balança própria</span>
         </footer>
 
         {/* BOTÃO FLUTUANTE DE CHAT COM O AGENTE NATIVO */}

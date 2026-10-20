@@ -39,11 +39,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { ArrowRightLeft, Plus, Search, Edit2, Trash2, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
-import {
-  formatHorimetro,
-  formatLitros,
-  formatStatusOperacao,
-} from '@/lib/historicoOperacional'
+import { formatHorimetro, formatLitros, formatStatusOperacao } from '@/lib/historicoOperacional'
 
 export default function HistoricoBaldeioPage() {
   const [registros, setRegistros] = useState<HistoricoBaldeio[]>([])

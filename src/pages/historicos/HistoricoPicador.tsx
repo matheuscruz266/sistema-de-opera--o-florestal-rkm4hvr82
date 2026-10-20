@@ -33,11 +33,7 @@ import {
 import { Flame, Plus, Search, Edit2, Trash2, Loader2, FileText } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuth } from '@/context/AuthContext'
-import {
-  formatHorimetro,
-  formatLitros,
-  formatStatusOperacao,
-} from '@/lib/historicoOperacional'
+import { formatHorimetro, formatLitros, formatStatusOperacao } from '@/lib/historicoOperacional'
 
 export default function HistoricoPicadorPage() {
   const { user } = useAuth()
