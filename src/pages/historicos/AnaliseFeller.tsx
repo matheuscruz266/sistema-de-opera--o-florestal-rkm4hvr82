@@ -4,7 +4,6 @@ import {
   Activity,
   AlertTriangle,
   CalendarDays,
-  ChartNoAxesCombined,
   Clock3,
   Fuel,
   Gauge,
@@ -99,6 +98,10 @@ function getMachineName(record: HistoricoFeller) {
 
 function getTalhaoName(record: HistoricoFeller) {
   return record.expand?.talhao_id?.talhao || record.talhao_id
+}
+
+function formatTalhaoLabel(value: string) {
+  return `Talhão ${value.replace(/^talh[aã]o[\s_-]*/i, '')}`
 }
 
 function getReason(record: HistoricoFeller) {
@@ -306,64 +309,54 @@ export default function AnaliseFellerPage() {
     setSelectedTalhao(ALL)
   }
 
+  const referenceRecord = dayRecords[0] || scopedRecords[0]
+
   return (
-    <main className="space-y-6">
-      <header className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
-        <div>
-          <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-[#5A6D5A]">
-            <ChartNoAxesCombined className="h-4 w-4 text-[#1B5E20]" />
-            Análise operacional
-          </div>
-          <h1 className="text-2xl font-bold tracking-tight text-[#1A2E1A] sm:text-3xl">
-            Desempenho do Feller
-          </h1>
-          <p className="mt-1 text-sm text-[#5A6D5A]">
-            Produção, disponibilidade e eventos operacionais a partir dos apontamentos registrados.
+    <main className="-m-4 min-h-full space-y-3 bg-[#F6F3EA] p-4 text-[#262117] sm:-m-6 sm:space-y-4 sm:p-6">
+      <header className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+        <div className="min-w-0">
+          <p className="text-[10px] font-medium uppercase tracking-[0.06em] text-[#7A7260]">
+            {referenceRecord
+              ? `${getMachineName(referenceRecord)} · Operador: ${referenceRecord.operador || '—'}`
+              : 'Análise operacional do Feller'}
           </p>
+          <h1 className="mt-0.5 font-serif text-2xl font-semibold leading-tight text-[#262117] sm:text-[27px]">
+            {referenceRecord ? `${formatTalhaoLabel(getTalhaoName(referenceRecord))} — ` : ''}
+            Avanço da derrubada
+          </h1>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Button asChild variant="outline" className="border-[#DDE4DE] text-[#1B5E20]">
-            <Link to="/historicos/feller">Abrir histórico operacional</Link>
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => void loadRecords()}
-            disabled={loading}
-            className="border-[#DDE4DE]"
-          >
-            <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-            Atualizar
-          </Button>
-        </div>
-      </header>
-
-      <Card className="border-[#DDE4DE] shadow-xs">
-        <CardContent className="grid gap-3 p-4 sm:grid-cols-2 xl:grid-cols-[1fr_1fr_1fr_auto] xl:items-end">
-          <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-[#5A6D5A]" htmlFor="feller-machine">
-              Máquina
+          <div className="w-[150px]">
+            <label className="sr-only" htmlFor="feller-date">
+              Dia da operação
             </label>
-            <Select value={selectedMachine} onValueChange={handleMachineChange}>
-              <SelectTrigger id="feller-machine" className="h-9">
-                <SelectValue placeholder="Todas as máquinas" />
+            <Select
+              value={selectedDate}
+              onValueChange={setSelectedDate}
+              disabled={!dateOptions.length}
+            >
+              <SelectTrigger id="feller-date" className="h-9 border-[#E4DFD1] bg-[#FFFDF8] text-xs">
+                <CalendarDays className="mr-2 h-3.5 w-3.5 text-[#7A7260]" />
+                <SelectValue placeholder="Selecione um dia" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value={ALL}>Todas as máquinas</SelectItem>
-                {machineOptions.map(([id, name]) => (
-                  <SelectItem key={id} value={id}>
-                    {name}
+                {dateOptions.map((date) => (
+                  <SelectItem key={date} value={date}>
+                    {dateLabel(date, { day: '2-digit', month: 'short', year: 'numeric' })}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
-          <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-[#5A6D5A]" htmlFor="feller-talho">
+          <div className="w-[132px]">
+            <label className="sr-only" htmlFor="feller-talho">
               Talhão
             </label>
             <Select value={selectedTalhao} onValueChange={setSelectedTalhao}>
-              <SelectTrigger id="feller-talho" className="h-9">
+              <SelectTrigger
+                id="feller-talho"
+                className="h-9 border-[#E4DFD1] bg-[#FFFDF8] text-xs"
+              >
                 <SelectValue placeholder="Todos os talhões" />
               </SelectTrigger>
               <SelectContent>
@@ -376,37 +369,44 @@ export default function AnaliseFellerPage() {
               </SelectContent>
             </Select>
           </div>
-          <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-[#5A6D5A]" htmlFor="feller-date">
-              Dia da operação
+          <div className="w-[150px]">
+            <label className="sr-only" htmlFor="feller-machine">
+              Máquina
             </label>
-            <Select
-              value={selectedDate}
-              onValueChange={setSelectedDate}
-              disabled={!dateOptions.length}
-            >
-              <SelectTrigger id="feller-date" className="h-9">
-                <SelectValue placeholder="Selecione um dia" />
+            <Select value={selectedMachine} onValueChange={handleMachineChange}>
+              <SelectTrigger
+                id="feller-machine"
+                className="h-9 border-[#E4DFD1] bg-[#FFFDF8] text-xs"
+              >
+                <SelectValue placeholder="Todas as máquinas" />
               </SelectTrigger>
               <SelectContent>
-                {dateOptions.map((date) => (
-                  <SelectItem key={date} value={date}>
-                    {dateLabel(date, {
-                      day: '2-digit',
-                      month: 'long',
-                      year: 'numeric',
-                    })}
+                <SelectItem value={ALL}>Todas as máquinas</SelectItem>
+                {machineOptions.map(([id, name]) => (
+                  <SelectItem key={id} value={id}>
+                    {name}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
-          <div className="flex h-9 items-center gap-2 rounded-md bg-[#F5F7F5] px-3 text-xs text-[#5A6D5A]">
-            <CalendarDays className="h-4 w-4 text-[#1B5E20]" />
-            {dayRecords.length} evento(s) no dia
-          </div>
-        </CardContent>
-      </Card>
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            aria-label="Atualizar apontamentos"
+            title="Atualizar apontamentos"
+            onClick={() => void loadRecords()}
+            disabled={loading}
+            className="h-9 w-9 border-[#E4DFD1] bg-[#FFFDF8] text-[#5B5444]"
+          >
+            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+          </Button>
+          <Button asChild variant="link" className="h-9 px-1 text-xs text-[#3E6B49]">
+            <Link to="/historicos/feller">Histórico</Link>
+          </Button>
+        </div>
+      </header>
 
       {error && (
         <div
@@ -432,30 +432,18 @@ export default function AnaliseFellerPage() {
             Carregando dados operacionais do Feller...
           </CardContent>
         </Card>
-      ) : error ? null : records.length === 0 ? (
-        <Card className="border-dashed border-[#C8D4C9]">
-          <CardContent className="flex min-h-64 flex-col items-center justify-center text-center">
-            <Trees className="mb-3 h-9 w-9 text-[#6B8F71]" />
-            <h2 className="font-semibold text-[#1A2E1A]">Ainda não há apontamentos do Feller</h2>
-            <p className="mt-1 max-w-md text-sm text-[#5A6D5A]">
-              Quando registros forem adicionados ao histórico operacional, a análise aparecerá aqui.
-            </p>
-            <Button asChild className="mt-4 bg-[#1B5E20] text-white hover:bg-[#14521A]">
-              <Link to="/historicos/feller">Ir para o histórico do Feller</Link>
-            </Button>
-          </CardContent>
-        </Card>
-      ) : (
+      ) : error ? null : (
         <>
           <section
             aria-label="Indicadores do dia"
-            className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5"
+            className="grid gap-2 sm:grid-cols-2 lg:grid-cols-6"
           >
             <KpiCard
               label="Árvores derrubadas"
               value={kpis.trees.toLocaleString('pt-BR')}
               unit="árvores"
               icon={<Trees className="h-4 w-4" />}
+              compact
             />
             <KpiCard
               label="Produtividade"
@@ -465,6 +453,7 @@ export default function AnaliseFellerPage() {
               })}
               unit="árv./h em produção"
               icon={<Activity className="h-4 w-4" />}
+              compact
             />
             <KpiCard
               label="Disponibilidade"
@@ -479,12 +468,14 @@ export default function AnaliseFellerPage() {
                   : 'Sem detalhamento dos eventos'
               }
               icon={<Gauge className="h-4 w-4" />}
+              compact
             />
             <KpiCard
               label="Combustível"
               value={kpis.fuel.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}
               unit="litros"
               icon={<Fuel className="h-4 w-4" />}
+              compact
             />
             <KpiCard
               label="Alertas do dia"
@@ -492,19 +483,25 @@ export default function AnaliseFellerPage() {
               unit={alerts.length ? 'requerem atenção' : 'nenhuma pendência'}
               icon={<AlertTriangle className="h-4 w-4" />}
               warning={alerts.length > 0}
+              compact
+            />
+            <KpiCard
+              label="Apontamentos"
+              value={String(dayRecords.length)}
+              unit="eventos no dia"
+              icon={<CalendarDays className="h-4 w-4" />}
+              compact
             />
           </section>
 
-          <div className="grid gap-4 xl:grid-cols-[minmax(0,1.6fr)_minmax(300px,0.9fr)]">
-            <Card className="border-[#DDE4DE] shadow-xs">
+          <div className="grid gap-3 lg:grid-cols-[minmax(0,1.8fr)_minmax(280px,0.9fr)]">
+            <Card className="border-[#E4DFD1] bg-[#FFFDF8] shadow-none">
               <CardHeader className="pb-2">
-                <CardTitle className="flex items-center gap-2 text-base text-[#1A2E1A]">
-                  <MapPin className="h-4 w-4 text-[#1B5E20]" />
-                  Localização dos apontamentos
+                <CardTitle className="flex items-center gap-2 text-sm text-[#3B3529]">
+                  <MapPin className="h-4 w-4 text-[#3E6B49]" />
+                  Mapa do talhão · eventos registrados
                 </CardTitle>
-                <p className="text-xs text-[#5A6D5A]">
-                  Trajeto relativo aos pontos registrados · {dayLabel}
-                </p>
+                <p className="text-[11px] text-[#7A7260]">Trajeto relativo · {dayLabel}</p>
               </CardHeader>
               <CardContent>
                 <EventMap records={dayRecords} />
@@ -512,13 +509,11 @@ export default function AnaliseFellerPage() {
               </CardContent>
             </Card>
 
-            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-1">
-              <Card className="border-[#DDE4DE] shadow-xs">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
+              <Card className="border-[#E4DFD1] bg-[#FFFDF8] shadow-none">
                 <CardHeader className="pb-1">
-                  <CardTitle className="text-base text-[#1A2E1A]">
-                    Produção · últimos 7 dias
-                  </CardTitle>
-                  <p className="text-xs text-[#5A6D5A]">Árvores derrubadas por dia</p>
+                  <CardTitle className="text-sm text-[#3B3529]">Avanço · últimos 7 dias</CardTitle>
+                  <p className="text-[11px] text-[#7A7260]">Árvores derrubadas por dia</p>
                 </CardHeader>
                 <CardContent>
                   <WeeklyProductionChart
@@ -531,45 +526,79 @@ export default function AnaliseFellerPage() {
                 </CardContent>
               </Card>
 
-              <Card className="border-[#DDE4DE] shadow-xs">
+              <Card className="border-[#E4DFD1] bg-[#FFFDF8] shadow-none">
                 <CardHeader className="pb-2">
-                  <CardTitle className="flex items-center gap-2 text-base text-[#1A2E1A]">
-                    <AlertTriangle className="h-4 w-4 text-amber-600" />
-                    Alertas e observações
+                  <CardTitle className="flex items-center gap-2 text-sm text-[#3B3529]">
+                    <AlertTriangle className="h-4 w-4 text-[#C47722]" />
+                    Alertas do dia
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   {alerts.length === 0 ? (
-                    <div className="rounded-md bg-[#F5F7F5] px-3 py-4 text-sm text-[#5A6D5A]">
+                    <div className="rounded-md bg-[#F6F3EA] px-3 py-3 text-xs text-[#7A7260]">
                       Nenhum alerta registrado para este dia.
                     </div>
                   ) : (
-                    <ul className="space-y-2">
+                    <ul className="space-y-1.5">
                       {alerts.map((alert) => (
-                        <li
-                          key={alert.id}
-                          className="flex gap-2 rounded-md border border-amber-200 bg-amber-50/70 p-3 text-sm text-[#4E3B1F]"
-                        >
-                          <span className="shrink-0 font-mono text-xs font-semibold">
-                            {alert.time}
+                        <li key={alert.id} className="flex gap-2 text-xs leading-5 text-[#4E3B1F]">
+                          <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[#C47722]" />
+                          <span>
+                            <b className="font-semibold">{alert.time}</b> {alert.text}
                           </span>
-                          <span>{alert.text}</span>
                         </li>
                       ))}
                     </ul>
                   )}
                 </CardContent>
               </Card>
+
+              <Card className="border-[#E4DFD1] bg-[#FFFDF8] shadow-none">
+                <CardHeader className="pb-1">
+                  <CardTitle className="text-sm text-[#3B3529]">Apontamentos do dia</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-0 p-0">
+                  {dayRecords.slice(0, 5).map((record) => (
+                    <div
+                      key={record.id}
+                      className="flex items-center justify-between gap-3 border-t border-[#EFEADC] px-4 py-2 text-[11px]"
+                    >
+                      <span className="flex min-w-0 items-center gap-2 text-[#4B4539]">
+                        <span
+                          className="h-2 w-2 shrink-0 rounded-full"
+                          style={{ backgroundColor: EVENT_STATUS[eventStatus(record)].color }}
+                        />
+                        <span className="truncate">
+                          {formatTime(record.inicio)} {EVENT_STATUS[eventStatus(record)].label}
+                        </span>
+                      </span>
+                      <span className="shrink-0 text-[#7A7260]">
+                        {record.localizacao ? 'GPS ok' : 'Sem GPS'}
+                      </span>
+                    </div>
+                  ))}
+                  {dayRecords.length === 0 && (
+                    <p className="px-4 pb-3 text-xs text-[#7A7260]">
+                      Não há apontamentos neste dia.
+                    </p>
+                  )}
+                  {dayRecords.length > 5 && (
+                    <p className="border-t border-[#EFEADC] px-4 py-2 text-[10px] text-[#7A7260]">
+                      + {dayRecords.length - 5} apontamento(s) na tabela abaixo
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
             </div>
           </div>
 
-          <Card className="border-[#DDE4DE] shadow-xs">
+          <Card className="border-[#E4DFD1] bg-[#FFFDF8] shadow-none">
             <CardHeader className="pb-2">
-              <CardTitle className="flex items-center gap-2 text-base text-[#1A2E1A]">
-                <Clock3 className="h-4 w-4 text-[#1B5E20]" />
+              <CardTitle className="flex items-center gap-2 text-sm text-[#3B3529]">
+                <Clock3 className="h-4 w-4 text-[#3E6B49]" />
                 Linha do tempo do turno
               </CardTitle>
-              <p className="text-xs text-[#5A6D5A]">
+              <p className="text-[11px] text-[#7A7260]">
                 {dayLabel}
                 {dayRecords[0]?.operador ? ` · Operador: ${dayRecords[0].operador}` : ''}
               </p>
@@ -579,30 +608,32 @@ export default function AnaliseFellerPage() {
             </CardContent>
           </Card>
 
-          <Card className="border-[#DDE4DE] shadow-xs">
+          <Card className="border-[#E4DFD1] bg-[#FFFDF8] shadow-none">
             <CardHeader className="pb-3">
               <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
                 <div>
-                  <CardTitle className="text-base text-[#1A2E1A]">Apontamentos do dia</CardTitle>
-                  <p className="mt-1 text-xs text-[#5A6D5A]">
+                  <CardTitle className="text-sm text-[#3B3529]">
+                    Detalhamento dos apontamentos
+                  </CardTitle>
+                  <p className="mt-1 text-xs text-[#7A7260]">
                     {dayRecords[0] ? getMachineName(dayRecords[0]) : 'Sem máquina selecionada'}
-                    {dayRecords[0] ? ` · Talhão ${getTalhaoName(dayRecords[0])}` : ''}
+                    {dayRecords[0] ? ` · ${formatTalhaoLabel(getTalhaoName(dayRecords[0]))}` : ''}
                   </p>
                 </div>
-                <Badge variant="outline" className="w-fit border-[#DDE4DE] text-[#5A6D5A]">
+                <Badge variant="outline" className="w-fit border-[#E4DFD1] text-[#7A7260]">
                   {dayRecords.length} registro(s)
                 </Badge>
               </div>
             </CardHeader>
             <CardContent className="p-0">
               {dayRecords.length === 0 ? (
-                <div className="px-6 py-12 text-center text-sm text-[#5A6D5A]">
+                <div className="px-6 py-12 text-center text-sm text-[#7A7260]">
                   Não há apontamentos para os filtros selecionados.
                 </div>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full min-w-[950px] text-left text-xs">
-                    <thead className="border-y border-[#DDE4DE] bg-[#F5F7F5] text-[10px] uppercase tracking-wider text-[#5A6D5A]">
+                    <thead className="border-y border-[#E4DFD1] bg-[#F6F3EA] text-[10px] uppercase tracking-wider text-[#7A7260]">
                       <tr>
                         <th className="px-4 py-3">Horário</th>
                         <th className="px-4 py-3">Status</th>
@@ -613,13 +644,13 @@ export default function AnaliseFellerPage() {
                         <th className="px-4 py-3">Motivo / observação</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-[#E7ECE7]">
+                    <tbody className="divide-y divide-[#EFEADC]">
                       {dayRecords.map((record) => {
                         const status = eventStatus(record)
                         const config = EVENT_STATUS[status]
                         return (
-                          <tr key={record.id} className="align-top hover:bg-[#F8FAF8]">
-                            <td className="whitespace-nowrap px-4 py-3 font-mono text-[#1A2E1A]">
+                          <tr key={record.id} className="align-top hover:bg-[#FAF8F1]">
+                            <td className="whitespace-nowrap px-4 py-3 font-mono text-[#3B3529]">
                               {formatTime(record.inicio)}
                               {record.fim ? `–${formatTime(record.fim)}` : ' · em aberto'}
                             </td>
@@ -701,28 +732,30 @@ function KpiCard({
   unit,
   icon,
   warning = false,
+  compact = false,
 }: {
   label: string
   value: string
   unit: string
   icon: ReactNode
   warning?: boolean
+  compact?: boolean
 }) {
   return (
     <Card
-      className={`border shadow-xs ${warning ? 'border-amber-200 bg-amber-50/40' : 'border-[#DDE4DE]'}`}
+      className={`border shadow-none ${warning ? 'border-[#F0D6B7] bg-[#FFF7EC]' : 'border-[#E4DFD1] bg-[#FFFDF8]'}`}
     >
-      <CardContent className="p-4">
-        <div className="flex items-center justify-between text-[#5A6D5A]">
-          <span className="text-xs font-semibold">{label}</span>
-          <span className={warning ? 'text-amber-700' : 'text-[#1B5E20]'}>{icon}</span>
+      <CardContent className={compact ? 'p-3' : 'p-4'}>
+        <div className="flex items-center justify-between text-[#7A7260]">
+          <span className="text-[10px] font-medium uppercase tracking-[0.04em]">{label}</span>
+          <span className={warning ? 'text-[#B96519]' : 'text-[#3E6B49]'}>{icon}</span>
         </div>
         <div
-          className={`mt-3 text-2xl font-bold tracking-tight ${warning ? 'text-amber-800' : 'text-[#1A2E1A]'}`}
+          className={`mt-1 text-[22px] font-semibold tracking-tight ${warning ? 'text-[#A85B1B]' : 'text-[#262117]'}`}
         >
           {value}
         </div>
-        <div className="mt-1 text-[11px] text-[#5A6D5A]">{unit}</div>
+        <div className="mt-0.5 text-[10px] text-[#7A7260]">{unit}</div>
       </CardContent>
     </Card>
   )
@@ -738,8 +771,29 @@ function EventMap({ records }: { records: HistoricoFeller[] }) {
 
   if (points.length === 0) {
     return (
-      <div className="flex min-h-56 items-center justify-center rounded-lg border border-dashed border-[#C8D4C9] bg-[#F5F7F5] px-4 text-center text-sm text-[#5A6D5A]">
-        Nenhum evento deste dia possui coordenadas válidas.
+      <div className="relative flex min-h-[280px] items-center justify-center overflow-hidden rounded-lg border border-[#E4DFD1] bg-[#203A29] px-4 text-center">
+        <svg
+          className="absolute inset-0 h-full w-full opacity-30"
+          viewBox="0 0 720 300"
+          preserveAspectRatio="none"
+          aria-hidden="true"
+        >
+          <defs>
+            <pattern
+              id="feller-empty-map-grid"
+              width="36"
+              height="36"
+              patternUnits="userSpaceOnUse"
+            >
+              <path d="M 36 0 L 0 0 0 36" fill="none" stroke="#C7D1BC" strokeOpacity=".35" />
+            </pattern>
+          </defs>
+          <rect width="720" height="300" fill="url(#feller-empty-map-grid)" />
+        </svg>
+        <div className="relative max-w-sm rounded-md bg-[#203A29]/90 px-4 py-3 text-xs text-[#E9E7D8]">
+          Nenhuma localização válida registrada para este dia. Os pontos aparecerão aqui quando
+          houver coordenadas nos apontamentos.
+        </div>
       </div>
     )
   }
@@ -763,7 +817,7 @@ function EventMap({ records }: { records: HistoricoFeller[] }) {
   const projected = points.map((point) => project(point.coordinates))
 
   return (
-    <div className="overflow-hidden rounded-lg border border-[#DDE4DE] bg-[#183820]">
+    <div className="overflow-hidden rounded-lg border border-[#E4DFD1] bg-[#203A29]">
       <svg
         viewBox={`0 0 ${width} ${height}`}
         role="img"
@@ -771,8 +825,8 @@ function EventMap({ records }: { records: HistoricoFeller[] }) {
         className="block h-auto max-h-[340px] w-full"
       >
         <defs>
-          <pattern id="feller-map-grid" width="32" height="32" patternUnits="userSpaceOnUse">
-            <path d="M 32 0 L 0 0 0 32" fill="none" stroke="#91A892" strokeOpacity=".12" />
+          <pattern id="feller-map-grid" width="36" height="36" patternUnits="userSpaceOnUse">
+            <path d="M 36 0 L 0 0 0 36" fill="none" stroke="#C7D1BC" strokeOpacity=".2" />
           </pattern>
         </defs>
         <rect width={width} height={height} fill="url(#feller-map-grid)" />
@@ -786,11 +840,18 @@ function EventMap({ records }: { records: HistoricoFeller[] }) {
             strokeWidth="2"
           />
         )}
-        {points.map(({ record }, index) => {
+        {points.map(({ record, coordinates }, index) => {
           const point = projected[index]
           const config = EVENT_STATUS[eventStatus(record)]
           return (
-            <g key={record.id}>
+            <g
+              key={record.id}
+              role="img"
+              aria-label={`${config.label} às ${formatTime(record.inicio)} · latitude ${coordinates.lat}, longitude ${coordinates.lng}`}
+            >
+              <title>
+                {`${config.label} · ${formatTime(record.inicio)} · ${coordinates.lat}, ${coordinates.lng}`}
+              </title>
               <circle
                 cx={point.x}
                 cy={point.y}
@@ -813,8 +874,8 @@ function EventMap({ records }: { records: HistoricoFeller[] }) {
           )
         })}
       </svg>
-      <p className="border-t border-white/10 px-3 py-2 text-[10px] text-emerald-100/80">
-        Visualização relativa das coordenadas dos registros; não representa mapa geográfico.
+      <p className="border-t border-white/10 px-3 py-2 text-[10px] text-[#E9E7D8]/80">
+        Posições relativas às coordenadas reais dos registros; não representa mapa geográfico.
       </p>
     </div>
   )
@@ -908,7 +969,7 @@ function ShiftTimeline({
 }) {
   if (!range) {
     return (
-      <div className="rounded-md bg-[#F5F7F5] px-4 py-6 text-center text-sm text-[#5A6D5A]">
+      <div className="rounded-md bg-[#F6F3EA] px-4 py-6 text-center text-sm text-[#7A7260]">
         Não há horários de início e fim suficientes para montar a linha do tempo.
       </div>
     )
@@ -917,7 +978,7 @@ function ShiftTimeline({
   return (
     <div>
       <div
-        className="flex h-9 overflow-hidden rounded-md bg-[#EDF1ED]"
+        className="flex h-8 overflow-hidden rounded-md bg-[#EFEADC]"
         aria-label="Linha do tempo de eventos do turno"
       >
         {records.map((record) => {
@@ -940,7 +1001,7 @@ function ShiftTimeline({
           )
         })}
       </div>
-      <div className="mt-2 flex justify-between font-mono text-[11px] text-[#5A6D5A]">
+      <div className="mt-2 flex justify-between font-mono text-[10px] text-[#7A7260]">
         <span>
           {new Date(range.start).toLocaleTimeString('pt-BR', {
             hour: '2-digit',

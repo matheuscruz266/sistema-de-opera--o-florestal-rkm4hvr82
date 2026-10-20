@@ -999,13 +999,13 @@
         {
           "name": "horas_trabalhadas",
           "type": "number",
-          "required": true,
+          "required": false,
           "system": false
         },
         {
           "name": "combustivel_litros",
           "type": "number",
-          "required": true,
+          "required": false,
           "system": false
         },
         {
@@ -1163,13 +1163,13 @@
         {
           "name": "horas_trabalhadas",
           "type": "number",
-          "required": true,
+          "required": false,
           "system": false
         },
         {
           "name": "combustivel_litros",
           "type": "number",
-          "required": true,
+          "required": false,
           "system": false
         },
         {
@@ -1347,7 +1347,7 @@
         {
           "name": "volume_sr",
           "type": "number",
-          "required": true,
+          "required": false,
           "system": false
         },
         {
@@ -1371,7 +1371,7 @@
         {
           "name": "status_baldeio",
           "type": "select",
-          "required": true,
+          "required": false,
           "system": false,
           "selectValues": ["em_transito", "concluido", "cancelado"]
         },
@@ -1531,13 +1531,13 @@
         {
           "name": "volume_sr",
           "type": "number",
-          "required": true,
+          "required": false,
           "system": false
         },
         {
           "name": "volume_m3_calculado",
           "type": "number",
-          "required": true,
+          "required": false,
           "system": false
         },
         {
@@ -1561,7 +1561,7 @@
         {
           "name": "status_aceite",
           "type": "select",
-          "required": true,
+          "required": false,
           "system": false,
           "selectValues": ["aceito", "rejeitado", "pendente"]
         },
