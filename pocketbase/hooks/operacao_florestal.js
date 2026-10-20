@@ -1745,6 +1745,32 @@ routerAdd('POST', '/backend/v1/importador/previa', (e) => {
       const rawIdVal =
         idxColId >= 0 && row[idxColId] !== undefined ? row[idxColId].toString().trim() : ''
       const appSheetIdVal = rawIdVal || `LINHA_${linhaNum}`
+      let maquinaIdVal = ''
+      if (destinoTabela === 'maquinas') {
+        let idxIdMaquina = cabecalhos.findIndex((h) => mapeamento[h] === 'id_maquina')
+        if (idxIdMaquina === -1) {
+          const sinonimosIdMaquina = [
+            'id_maquina',
+            'maquina',
+            'prefixo',
+            'tag',
+            'codigo',
+            'frota',
+            'equipamento_id',
+          ]
+          idxIdMaquina = cabecalhos.findIndex((h) => {
+            if (mapeamento[h]) return false
+            const header = h.toLowerCase().replace(/[^a-z0-9_]/g, '')
+            return sinonimosIdMaquina.includes(header)
+          })
+        }
+        const idMaquinaPlanilha =
+          idxIdMaquina >= 0 && row[idxIdMaquina] !== undefined
+            ? row[idxIdMaquina].toString().trim()
+            : ''
+        maquinaIdVal =
+          idMaquinaPlanilha || rawIdVal || `MQ-${spreadsheetId}-${linhaNum}`
+      }
 
       // Validação de campos obrigatórios conforme destino
       let motivoRejeicao = ''
@@ -1818,6 +1844,7 @@ routerAdd('POST', '/backend/v1/importador/previa', (e) => {
 
       // Verifica se o registro já existe
       const idExistente =
+        (maquinaIdVal ? cacheTabela.porAppSheetId[maquinaIdVal.toLowerCase()] : null) ||
         cacheTabela.porAppSheetId[appSheetIdVal] ||
         (rawIdVal ? cacheTabela.porAppSheetId[rawIdVal.toLowerCase()] : null)
 
@@ -1836,6 +1863,9 @@ routerAdd('POST', '/backend/v1/importador/previa', (e) => {
         // Marca na memória para que referências filhas subsequentes consigam resolver
         if (rawIdVal) {
           cacheTabela.porAppSheetId[rawIdVal] = `PREVIEW_NEW_${appSheetIdVal}`
+        }
+        if (maquinaIdVal) {
+          cacheTabela.porAppSheetId[maquinaIdVal.toLowerCase()] = `PREVIEW_NEW_${maquinaIdVal}`
         }
       }
 
@@ -2041,6 +2071,14 @@ routerAdd('POST', '/backend/v1/importador/executar', (e) => {
       } catch (_) {}
     }
     return s
+  }
+
+  const normalizarNumero = (valor, fallback = 0) => {
+    if (valor === null || valor === undefined || valor === '') return fallback
+    const str = String(valor).trim().replace(',', '.')
+    if (!str) return fallback
+    const num = Number(str)
+    return Number.isFinite(num) ? num : fallback
   }
 
   // Helper inline para resolver foreign key:
@@ -2781,18 +2819,44 @@ routerAdd('POST', '/backend/v1/importador/executar', (e) => {
           }
         }
       }
+      const maquinaId =
+        destinoTabela === 'maquinas'
+          ? (
+              dados.id_maquina ||
+              dados.maquina ||
+              dados.prefixo ||
+              rawIdVal ||
+              `MQ-${spreadsheetId}-${linhaNum}`
+            )
+              .toString()
+              .trim()
+          : ''
       // Procura se já existe no PocketBase
       let recordExistente = null
-      if (rawIdVal) {
+      if (destinoTabela === 'maquinas' && maquinaId) {
         try {
-          const porAS = e.app.findRecordsByFilter(
-            destinoTabela,
-            `app_sheet_id = '${rawIdVal}'`,
+          const maquinaExistente = e.app.findRecordsByFilter(
+            'maquinas',
+            `id_maquina = '${maquinaId}'`,
             '',
             1,
             0,
           )
-          if (porAS.length > 0) recordExistente = porAS[0]
+          if (maquinaExistente.length > 0) recordExistente = maquinaExistente[0]
+        } catch (_) {}
+      }
+      if (rawIdVal) {
+        try {
+          if (!recordExistente) {
+            const porAS = e.app.findRecordsByFilter(
+              destinoTabela,
+              `app_sheet_id = '${rawIdVal}'`,
+              '',
+              1,
+              0,
+            )
+            if (porAS.length > 0) recordExistente = porAS[0]
+          }
         } catch (_) {}
       }
 
@@ -2810,12 +2874,6 @@ routerAdd('POST', '/backend/v1/importador/executar', (e) => {
             if (t) {
               const th = e.app.findRecordsByFilter('talhoes', `talhao = '${t}'`, '', 1, 0)
               if (th.length > 0) recordExistente = th[0]
-            }
-          } else if (destinoTabela === 'maquinas' && dados.id_maquina) {
-            const m = (dados.id_maquina || '').trim()
-            if (m) {
-              const mq = e.app.findRecordsByFilter('maquinas', `id_maquina = '${m}'`, '', 1, 0)
-              if (mq.length > 0) recordExistente = mq[0]
             }
           } else if (destinoTabela === 'caminhoes' && dados.placa) {
             const p = (dados.placa || '').trim().toUpperCase()
@@ -2930,12 +2988,9 @@ routerAdd('POST', '/backend/v1/importador/executar', (e) => {
           if (dados.localizacao) rec.set('localizacao', dados.localizacao.toString().trim())
           if (dados.status_atual) rec.set('status_atual', dados.status_atual.toString().trim())
         } else if (destinoTabela === 'maquinas') {
-          const idMq =
-            (dados.id_maquina || dados.maquina || dados.prefixo || '').toString().trim() ||
-            `MQ-${Date.now().toString().slice(-4)}`
-          rec.set('id_maquina', idMq)
+          rec.set('id_maquina', maquinaId)
           if (dados.equipamento) rec.set('equipamento', dados.equipamento.toString().trim())
-          else if (!isUpdate) rec.set('equipamento', idMq || 'Máquina Operacional')
+          else if (!isUpdate) rec.set('equipamento', maquinaId || 'Máquina Operacional')
           const tp = (dados.tipo || '').toLowerCase()
           rec.set(
             'tipo',
@@ -3093,16 +3148,11 @@ routerAdd('POST', '/backend/v1/importador/executar', (e) => {
           )
           rec.set(
             'horas_trabalhadas',
-            parseFloat(String(dados.horas_trabalhadas || dados.horas || 0).replace(',', '.')) || 0,
+            normalizarNumero(dados.horas_trabalhadas ?? dados.horas ?? 0),
           )
           rec.set(
             'combustivel_litros',
-            parseFloat(
-              String(dados.combustivel_litros || dados.litros || dados.combustivel || 0).replace(
-                ',',
-                '.',
-              ),
-            ) || 0,
+            normalizarNumero(dados.combustivel_litros ?? dados.litros ?? dados.combustivel ?? 0),
           )
           if (dados.arvores_derrubadas != null)
             rec.set('arvores_derrubadas', parseInt(String(dados.arvores_derrubadas), 10) || 0)
@@ -3148,16 +3198,11 @@ routerAdd('POST', '/backend/v1/importador/executar', (e) => {
           )
           rec.set(
             'horas_trabalhadas',
-            parseFloat(String(dados.horas_trabalhadas || dados.horas || 0).replace(',', '.')) || 0,
+            normalizarNumero(dados.horas_trabalhadas ?? dados.horas ?? 0),
           )
           rec.set(
             'combustivel_litros',
-            parseFloat(
-              String(dados.combustivel_litros || dados.litros || dados.combustivel || 0).replace(
-                ',',
-                '.',
-              ),
-            ) || 0,
+            normalizarNumero(dados.combustivel_litros ?? dados.litros ?? dados.combustivel ?? 0),
           )
           if (dados.ciclos_arraste != null)
             rec.set('ciclos_arraste', parseInt(String(dados.ciclos_arraste), 10) || 0)
