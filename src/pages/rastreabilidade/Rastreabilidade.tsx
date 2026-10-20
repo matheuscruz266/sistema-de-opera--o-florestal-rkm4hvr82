@@ -149,8 +149,7 @@ export default function RastreabilidadePage() {
   const picadoresTalhao = useMemo(() => {
     return picadores.filter(
       (p) =>
-        isStatusCarregamento(p.status_evento) &&
-        pilhasAlcancadasIds.includes(p.pilha_origem_id),
+        isStatusCarregamento(p.status_evento) && pilhasAlcancadasIds.includes(p.pilha_origem_id),
     )
   }, [picadores, pilhasAlcancadasIds])
 
@@ -761,9 +760,7 @@ export default function RastreabilidadePage() {
                         <td className="py-2.5 px-4 font-mono">
                           {formatDataHoraOperacional(p.data_hora_expedicao)}
                         </td>
-                        <td className="py-2.5 px-4 font-bold text-[#1A2E1A]">
-                          {p.cliente || '—'}
-                        </td>
+                        <td className="py-2.5 px-4 font-bold text-[#1A2E1A]">{p.cliente || '—'}</td>
                         <td className="py-2.5 px-4 font-mono text-[#5A6D5A]">
                           {caminhao?.placa || 'RODOVIÁRIO'} ({caminhao?.modelo || 'Cavaqueiro'})
                         </td>

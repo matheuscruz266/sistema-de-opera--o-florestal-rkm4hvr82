@@ -1018,11 +1018,11 @@ export default function IntegracoesPage() {
                 </h3>
                 <p className="text-xs text-[#5A6D5A]">
                   O endpoint aceita um único objeto JSON ou uma lista de registros para envio em
-                  lote. Campos numéricos aceitam decimais com ponto flutuante.
-                  {' '}Para vincular a carreta cadastrada, envie <code>sr_cavaco</code> com o
-                  identificador <code>id_carreta</code> do cadastro (sem diferenciar maiúsculas e
-                  minúsculas); <code>conversao_cavaco_id</code> também aceita o ID interno do
-                  PocketBase. Um identificador informado que não exista será rejeitado.
+                  lote. Campos numéricos aceitam decimais com ponto flutuante. Para vincular a
+                  carreta cadastrada, envie <code>sr_cavaco</code> com o identificador{' '}
+                  <code>id_carreta</code> do cadastro (sem diferenciar maiúsculas e minúsculas);{' '}
+                  <code>conversao_cavaco_id</code> também aceita o ID interno do PocketBase. Um
+                  identificador informado que não exista será rejeitado.
                 </p>
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">

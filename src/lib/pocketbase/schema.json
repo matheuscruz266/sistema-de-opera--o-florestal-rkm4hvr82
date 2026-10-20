@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-20T16:58:03.947Z",
+  "generatedAt": "2026-10-20T18:36:14.735Z",
   "collections": [
     {
       "name": "users",
@@ -1721,21 +1721,21 @@
         {
           "name": "caminhao_id",
           "type": "relation",
-          "required": false,
+          "required": true,
           "system": false,
           "collectionRef": "caminhoes"
         },
         {
           "name": "pilha_origem_id",
           "type": "relation",
-          "required": false,
+          "required": true,
           "system": false,
           "collectionRef": "pilhas"
         },
         {
           "name": "nota_fiscal",
           "type": "text",
-          "required": false,
+          "required": true,
           "system": false
         },
         {
@@ -1913,9 +1913,7 @@
           "system": false
         }
       ],
-      "indexes": [
-        "CREATE UNIQUE INDEX idx_picador_nota ON historico_picador (nota_fiscal) WHERE nota_fiscal != ''"
-      ]
+      "indexes": ["CREATE UNIQUE INDEX idx_picador_nota ON historico_picador (nota_fiscal)"]
     },
     {
       "name": "inventario_pilha",

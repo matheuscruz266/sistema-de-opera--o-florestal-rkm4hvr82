@@ -20,13 +20,7 @@ migrate(
     const requiredFields = ['caminhao_id', 'pilha_origem_id', 'nota_fiscal']
 
     for (const fieldName of requiredFields) {
-      const records = app.findRecordsByFilter(
-        'historico_picador',
-        `${fieldName} = ""`,
-        '',
-        1,
-        0,
-      )
+      const records = app.findRecordsByFilter('historico_picador', `${fieldName} = ""`, '', 1, 0)
       if (records.length > 0) {
         throw new Error(
           `Cannot restore required ${fieldName}: historico_picador contains records without it.`,

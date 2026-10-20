@@ -1,6 +1,9 @@
 /// <reference path="../pb_data/types.d.ts" />
 
-const normalizarIdentificadorSrCavaco = (valor) => String(valor || '').trim().toUpperCase()
+const normalizarIdentificadorSrCavaco = (valor) =>
+  String(valor || '')
+    .trim()
+    .toUpperCase()
 
 const resolverConversaoSrCavaco = (app, valor) => {
   const referencia = String(valor || '').trim()
@@ -684,8 +687,7 @@ routerAdd('POST', '/backend/v1/ingestao/d2', (e) => {
     // Resolve o ID interno ou o código SR_Cavaco cadastrado.
     let convCavacoId = defaultConvCavacoId
     let srCavacoCodigo = ''
-    const conversaoCavacoRef =
-      item.conversao_cavaco_id || item.sr_cavaco || item.sr_cavaco_texto
+    const conversaoCavacoRef = item.conversao_cavaco_id || item.sr_cavaco || item.sr_cavaco_texto
     if (conversaoCavacoRef) {
       const conversaoCavaco = resolverConversaoSrCavaco(e.app, conversaoCavacoRef)
       if (!conversaoCavaco) {
@@ -1465,8 +1467,7 @@ routerAdd('POST', '/backend/v1/sheets/sincronizar', (e) => {
 
     let convCavacoId = defaultConvCavacoId
     let srCavacoCodigo = ''
-    const conversaoCavacoRef =
-      item.conversao_cavaco_id || item.sr_cavaco || item.sr_cavaco_texto
+    const conversaoCavacoRef = item.conversao_cavaco_id || item.sr_cavaco || item.sr_cavaco_texto
     if (conversaoCavacoRef) {
       const conversaoCavaco = resolverConversaoSrCavaco(e.app, conversaoCavacoRef)
       if (!conversaoCavaco) {
@@ -2633,12 +2634,7 @@ routerAdd('POST', '/backend/v1/importador/executar', (e) => {
           status_his: ['status_his', 'statushis', 'status_historico'],
           localizacao: ['localizacao', 'coordenadas'],
           data_operacao: ['data_operacao', 'data', 'data_hora', 'dataoperacao', 'dt_operacao'],
-          horas_trabalhadas: [
-            'horas_trabalhadas',
-            'horas',
-            'tempo_horas',
-            'hr_trabalhadas',
-          ],
+          horas_trabalhadas: ['horas_trabalhadas', 'horas', 'tempo_horas', 'hr_trabalhadas'],
           combustivel_litros: [
             'combustivel_litros',
             'combustivel',
@@ -3236,10 +3232,7 @@ routerAdd('POST', '/backend/v1/importador/executar', (e) => {
               new Date().toISOString()
             ).toString(),
           )
-          rec.set(
-            'horas_trabalhadas',
-            horasTrabalhadasDaLinha(dados),
-          )
+          rec.set('horas_trabalhadas', horasTrabalhadasDaLinha(dados))
           rec.set(
             'combustivel_litros',
             normalizarNumero(dados.combustivel_litros ?? dados.litros ?? dados.combustivel ?? 0),
@@ -3290,10 +3283,7 @@ routerAdd('POST', '/backend/v1/importador/executar', (e) => {
               new Date().toISOString()
             ).toString(),
           )
-          rec.set(
-            'horas_trabalhadas',
-            horasTrabalhadasDaLinha(dados),
-          )
+          rec.set('horas_trabalhadas', horasTrabalhadasDaLinha(dados))
           rec.set(
             'combustivel_litros',
             normalizarNumero(dados.combustivel_litros ?? dados.litros ?? dados.combustivel ?? 0),
@@ -3473,10 +3463,7 @@ routerAdd('POST', '/backend/v1/importador/executar', (e) => {
           const nf = (dados.nota_fiscal || dados.ticket || dados.nf || '').toString().trim()
           if (nf) {
             rec.set('nota_fiscal', nf)
-          } else if (
-            !isUpdate ||
-            (rec.getString('nota_fiscal') || '').startsWith('PIC-S-NOTA-')
-          ) {
+          } else if (!isUpdate || (rec.getString('nota_fiscal') || '').startsWith('PIC-S-NOTA-')) {
             rec.set('nota_fiscal', '')
           }
           const cmId = resolverFK(
@@ -3545,10 +3532,7 @@ routerAdd('POST', '/backend/v1/importador/executar', (e) => {
           if (conversaoCavaco) {
             rec.set('sr_cavaco_texto', conversaoCavaco.getString('id_carreta'))
           } else if (dados.sr_cavaco || dados.sr_cavaco_texto) {
-            rec.set(
-              'sr_cavaco_texto',
-              (dados.sr_cavaco || dados.sr_cavaco_texto).toString().trim(),
-            )
+            rec.set('sr_cavaco_texto', (dados.sr_cavaco || dados.sr_cavaco_texto).toString().trim())
           }
           rec.set('volume_cavaco_m3', null)
           rec.set('peso_cavaco_t', null)

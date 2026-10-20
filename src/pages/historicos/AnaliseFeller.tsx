@@ -285,10 +285,7 @@ export default function AnaliseFellerPage() {
     scopedRecords.forEach((record) => {
       const date = operationalDateKey(record.data_operacao)
       if (date && totals.has(date)) {
-        totals.set(
-          date,
-          (totals.get(date) || 0) + (Number(record.arvores_derrubadas) || 0),
-        )
+        totals.set(date, (totals.get(date) || 0) + (Number(record.arvores_derrubadas) || 0))
       }
     })
     return [...totals.entries()].map(([date, trees]) => ({ date, trees }))
@@ -330,16 +327,12 @@ export default function AnaliseFellerPage() {
         end: parseOperationalDateTime(record.fim)?.getTime(),
       }))
       .filter(
-        (
-          item,
-        ): item is { record: HistoricoFeller; start: number; end: number | undefined } =>
+        (item): item is { record: HistoricoFeller; start: number; end: number | undefined } =>
           item.start !== undefined,
       )
     if (timedRecords.length === 0) return null
     const start = Math.min(...timedRecords.map((item) => item.start))
-    const end = Math.max(
-      ...timedRecords.map((item) => item.end ?? item.start),
-    )
+    const end = Math.max(...timedRecords.map((item) => item.end ?? item.start))
     return end > start ? { start, end, duration: end - start } : null
   }, [dayRecords])
 
