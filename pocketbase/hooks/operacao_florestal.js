@@ -1,29 +1,5 @@
 /// <reference path="../pb_data/types.d.ts" />
 
-const normalizarIdentificadorSrCavaco = (valor) =>
-  String(valor || '')
-    .trim()
-    .toUpperCase()
-
-const resolverConversaoSrCavaco = (app, valor) => {
-  const referencia = String(valor || '').trim()
-  if (!referencia) return null
-
-  try {
-    const porId = app.findRecordById('conversao_sr_cavaco', referencia)
-    if (porId) return porId
-  } catch (_) {}
-
-  const identificador = normalizarIdentificadorSrCavaco(referencia)
-  const conversoes = app.findRecordsByFilter('conversao_sr_cavaco', '', 'id_carreta', 1000, 0)
-  for (let i = 0; i < conversoes.length; i++) {
-    if (normalizarIdentificadorSrCavaco(conversoes[i].getString('id_carreta')) === identificador) {
-      return conversoes[i]
-    }
-  }
-  return null
-}
-
 // Hook para histórico de descarga - atualiza estoque da pilha destino
 onRecordAfterCreateSuccess((e) => {
   try {
@@ -689,7 +665,34 @@ routerAdd('POST', '/backend/v1/ingestao/d2', (e) => {
     let srCavacoCodigo = ''
     const conversaoCavacoRef = item.conversao_cavaco_id || item.sr_cavaco || item.sr_cavaco_texto
     if (conversaoCavacoRef) {
-      const conversaoCavaco = resolverConversaoSrCavaco(e.app, conversaoCavacoRef)
+      const refStr = String(conversaoCavacoRef).trim()
+      let conversaoCavaco = null
+      try {
+        const porId = e.app.findRecordById('conversao_sr_cavaco', refStr)
+        if (porId) conversaoCavaco = porId
+      } catch (_) {}
+
+      if (!conversaoCavaco) {
+        const idNorm = refStr.toUpperCase()
+        const conversoes = e.app.findRecordsByFilter(
+          'conversao_sr_cavaco',
+          '',
+          'id_carreta',
+          1000,
+          0,
+        )
+        for (let k = 0; k < conversoes.length; k++) {
+          if (
+            String(conversoes[k].getString('id_carreta') || '')
+              .trim()
+              .toUpperCase() === idNorm
+          ) {
+            conversaoCavaco = conversoes[k]
+            break
+          }
+        }
+      }
+
       if (!conversaoCavaco) {
         rejeitados++
         detalhesItens.push({
@@ -1469,7 +1472,34 @@ routerAdd('POST', '/backend/v1/sheets/sincronizar', (e) => {
     let srCavacoCodigo = ''
     const conversaoCavacoRef = item.conversao_cavaco_id || item.sr_cavaco || item.sr_cavaco_texto
     if (conversaoCavacoRef) {
-      const conversaoCavaco = resolverConversaoSrCavaco(e.app, conversaoCavacoRef)
+      const refStr = String(conversaoCavacoRef).trim()
+      let conversaoCavaco = null
+      try {
+        const porId = e.app.findRecordById('conversao_sr_cavaco', refStr)
+        if (porId) conversaoCavaco = porId
+      } catch (_) {}
+
+      if (!conversaoCavaco) {
+        const idNorm = refStr.toUpperCase()
+        const conversoes = e.app.findRecordsByFilter(
+          'conversao_sr_cavaco',
+          '',
+          'id_carreta',
+          1000,
+          0,
+        )
+        for (let k = 0; k < conversoes.length; k++) {
+          if (
+            String(conversoes[k].getString('id_carreta') || '')
+              .trim()
+              .toUpperCase() === idNorm
+          ) {
+            conversaoCavaco = conversoes[k]
+            break
+          }
+        }
+      }
+
       if (!conversaoCavaco) {
         rejeitados++
         detalhesItens.push({
@@ -3520,13 +3550,39 @@ routerAdd('POST', '/backend/v1/importador/executar', (e) => {
           )
             .toString()
             .trim()
-          const conversaoCavaco = conversaoCavacoRef
-            ? resolverConversaoSrCavaco(e.app, conversaoCavacoRef)
-            : null
-          if (conversaoCavacoRef && !conversaoCavaco) {
-            throw new Error(
-              `SR_Cavaco "${conversaoCavacoRef}" não encontrado no cadastro de carretas.`,
-            )
+          let conversaoCavaco = null
+          if (conversaoCavacoRef) {
+            try {
+              const porId = e.app.findRecordById('conversao_sr_cavaco', conversaoCavacoRef)
+              if (porId) conversaoCavaco = porId
+            } catch (_) {}
+
+            if (!conversaoCavaco) {
+              const idNorm = conversaoCavacoRef.toUpperCase()
+              const conversoes = e.app.findRecordsByFilter(
+                'conversao_sr_cavaco',
+                '',
+                'id_carreta',
+                1000,
+                0,
+              )
+              for (let k = 0; k < conversoes.length; k++) {
+                if (
+                  String(conversoes[k].getString('id_carreta') || '')
+                    .trim()
+                    .toUpperCase() === idNorm
+                ) {
+                  conversaoCavaco = conversoes[k]
+                  break
+                }
+              }
+            }
+
+            if (!conversaoCavaco) {
+              throw new Error(
+                `SR_Cavaco "${conversaoCavacoRef}" não encontrado no cadastro de carretas.`,
+              )
+            }
           }
           rec.set('conversao_cavaco_id', conversaoCavaco ? conversaoCavaco.id : '')
           if (conversaoCavaco) {
