@@ -526,6 +526,7 @@ export interface IngestaoD2ItemPayload {
   caminhao_id?: string
   placa?: string
   conversao_cavaco_id?: string
+  sr_cavaco?: string
   cliente?: string
   umidade_perc?: number
   operador_nome?: string

@@ -39,7 +39,14 @@ import {
 } from '@/components/ui/alert-dialog'
 import { ArrowRightLeft, Plus, Search, Edit2, Trash2, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
-import { formatHorimetro, formatLitros, formatStatusOperacao } from '@/lib/historicoOperacional'
+import {
+  formatDataHoraOperacional,
+  formatHorimetro,
+  formatLitros,
+  formatReferenciaOperacional,
+  formatStatusOperacao,
+  statusOperacaoClass,
+} from '@/lib/historicoOperacional'
 
 export default function HistoricoBaldeioPage() {
   const [registros, setRegistros] = useState<HistoricoBaldeio[]>([])
@@ -275,18 +282,24 @@ export default function HistoricoBaldeioPage() {
                       {item.ordem || '-'}
                     </td>
                     <td className="py-3 px-4 font-mono font-semibold text-[#1A2E1A]">
-                      {item.expand?.caminhao_baldeio_id?.placa_baldeio || 'Veículo'}
+                      {formatReferenciaOperacional(item.expand?.caminhao_baldeio_id?.placa_baldeio)}
                     </td>
                     <td className="py-3 px-4 text-right font-mono">
                       {formatHorimetro(item.horimetro)}
                     </td>
                     <td className="py-3 px-4 text-right font-mono">{formatLitros(item)}</td>
-                    <td className="py-3 px-4 text-[#5A6D5A]">{formatStatusOperacao(item)}</td>
+                    <td className="py-3 px-4">
+                      <span
+                        className={`inline-flex rounded-full border px-2 py-1 text-[10px] font-semibold ${statusOperacaoClass(item)}`}
+                      >
+                        {formatStatusOperacao(item)}
+                      </span>
+                    </td>
                     <td className="py-3 px-4 text-[#1B5E20] font-semibold">
-                      {item.expand?.talhao_origem_id?.talhao || '-'}
+                      {formatReferenciaOperacional(item.expand?.talhao_origem_id?.talhao)}
                     </td>
                     <td className="py-3 px-4 font-mono text-[#1A2E1A]">
-                      {item.expand?.pilha_destino_id?.codigo || '-'}
+                      {formatReferenciaOperacional(item.expand?.pilha_destino_id?.codigo)}
                     </td>
                     <td className="py-3 px-4 text-right font-mono font-bold text-[#1A2E1A]">
                       {item.volume_sr.toFixed(1)} SR
@@ -295,10 +308,10 @@ export default function HistoricoBaldeioPage() {
                       {item.volume_m3_estimado ? `${item.volume_m3_estimado.toFixed(2)} m³` : '-'}
                     </td>
                     <td className="py-3 px-4 text-[#5A6D5A]">
-                      <div>{item.data_hora_saida.replace('T', ' ')}</div>
+                      <div>{formatDataHoraOperacional(item.data_hora_saida)}</div>
                       {item.data_hora_chegada && (
                         <div className="text-[10px] text-emerald-700">
-                          Chegada: {item.data_hora_chegada.replace('T', ' ')}
+                          Chegada: {formatDataHoraOperacional(item.data_hora_chegada)}
                         </div>
                       )}
                     </td>

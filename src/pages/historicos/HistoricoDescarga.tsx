@@ -43,7 +43,14 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuth } from '@/context/AuthContext'
-import { formatHorimetro, formatLitros, formatStatusOperacao } from '@/lib/historicoOperacional'
+import {
+  formatDataHoraOperacional,
+  formatHorimetro,
+  formatLitros,
+  formatReferenciaOperacional,
+  formatStatusOperacao,
+  statusOperacaoClass,
+} from '@/lib/historicoOperacional'
 
 export default function HistoricoDescargaPage() {
   const { user } = useAuth()
@@ -275,24 +282,30 @@ export default function HistoricoDescargaPage() {
                 {filtered.map((item) => (
                   <tr key={item.id} className="hover:bg-neutral-50/80 transition-colors">
                     <td className="py-3 px-4 font-mono text-[#5A6D5A]">
-                      {item.data_hora_descarga.replace('T', ' ')}
+                      {formatDataHoraOperacional(item.data_hora_descarga)}
                     </td>
                     <td className="py-3 px-4 font-mono text-xs font-semibold text-[#1A2E1A]">
                       {item.ordem || '-'}
                     </td>
                     <td className="py-3 px-4 font-mono font-bold text-[#1A2E1A]">
-                      {item.expand?.caminhao_baldeio_id?.placa_baldeio || 'Veículo'}
+                      {formatReferenciaOperacional(item.expand?.caminhao_baldeio_id?.placa_baldeio)}
                     </td>
                     <td className="py-3 px-4 font-mono font-semibold text-[#1A2E1A]">
-                      {item.expand?.maquina_id?.p_ordens || '—'}
+                      {formatReferenciaOperacional(item.expand?.maquina_id?.p_ordens)}
                     </td>
                     <td className="py-3 px-4 text-right font-mono">
                       {formatHorimetro(item.horimetro)}
                     </td>
                     <td className="py-3 px-4 text-right font-mono">{formatLitros(item)}</td>
-                    <td className="py-3 px-4 text-[#5A6D5A]">{formatStatusOperacao(item)}</td>
+                    <td className="py-3 px-4">
+                      <span
+                        className={`inline-flex rounded-full border px-2 py-1 text-[10px] font-semibold ${statusOperacaoClass(item)}`}
+                      >
+                        {formatStatusOperacao(item)}
+                      </span>
+                    </td>
                     <td className="py-3 px-4 font-mono font-semibold text-[#1B5E20]">
-                      {item.expand?.pilha_destino_id?.codigo || '-'}
+                      {formatReferenciaOperacional(item.expand?.pilha_destino_id?.codigo)}
                     </td>
                     <td className="py-3 px-4 text-right font-mono font-bold text-[#1A2E1A]">
                       {item.volume_sr.toFixed(1)} SR

@@ -1,5 +1,26 @@
 /// <reference path="../pb_data/types.d.ts" />
 
+const normalizarIdentificadorSrCavaco = (valor) => String(valor || '').trim().toUpperCase()
+
+const resolverConversaoSrCavaco = (app, valor) => {
+  const referencia = String(valor || '').trim()
+  if (!referencia) return null
+
+  try {
+    const porId = app.findRecordById('conversao_sr_cavaco', referencia)
+    if (porId) return porId
+  } catch (_) {}
+
+  const identificador = normalizarIdentificadorSrCavaco(referencia)
+  const conversoes = app.findRecordsByFilter('conversao_sr_cavaco', '', 'id_carreta', 1000, 0)
+  for (let i = 0; i < conversoes.length; i++) {
+    if (normalizarIdentificadorSrCavaco(conversoes[i].getString('id_carreta')) === identificador) {
+      return conversoes[i]
+    }
+  }
+  return null
+}
+
 // Hook para histórico de descarga - atualiza estoque da pilha destino
 onRecordAfterCreateSuccess((e) => {
   try {
@@ -660,10 +681,25 @@ routerAdd('POST', '/backend/v1/ingestao/d2', (e) => {
       } catch (_) {}
     }
 
-    // Resolução de Conversão Cavaco
+    // Resolve o ID interno ou o código SR_Cavaco cadastrado.
     let convCavacoId = defaultConvCavacoId
-    if (item.conversao_cavaco_id) {
-      convCavacoId = item.conversao_cavaco_id.toString()
+    let srCavacoCodigo = ''
+    const conversaoCavacoRef =
+      item.conversao_cavaco_id || item.sr_cavaco || item.sr_cavaco_texto
+    if (conversaoCavacoRef) {
+      const conversaoCavaco = resolverConversaoSrCavaco(e.app, conversaoCavacoRef)
+      if (!conversaoCavaco) {
+        rejeitados++
+        detalhesItens.push({
+          indice: idx,
+          nota_fiscal: notaFiscal,
+          status: 'rejeitado',
+          motivo: `SR_Cavaco "${conversaoCavacoRef}" não encontrado no cadastro de carretas.`,
+        })
+        continue
+      }
+      convCavacoId = conversaoCavaco.id
+      srCavacoCodigo = conversaoCavaco.getString('id_carreta')
     }
 
     try {
@@ -686,6 +722,7 @@ routerAdd('POST', '/backend/v1/ingestao/d2', (e) => {
       if (pilhaId) novoPicador.set('pilha_origem_id', pilhaId)
       if (caminhaoId) novoPicador.set('caminhao_id', caminhaoId)
       if (convCavacoId) novoPicador.set('conversao_cavaco_id', convCavacoId)
+      if (srCavacoCodigo) novoPicador.set('sr_cavaco_texto', srCavacoCodigo)
 
       e.app.save(novoPicador)
 
@@ -1427,8 +1464,23 @@ routerAdd('POST', '/backend/v1/sheets/sincronizar', (e) => {
     }
 
     let convCavacoId = defaultConvCavacoId
-    if (item.conversao_cavaco_id) {
-      convCavacoId = item.conversao_cavaco_id.toString()
+    let srCavacoCodigo = ''
+    const conversaoCavacoRef =
+      item.conversao_cavaco_id || item.sr_cavaco || item.sr_cavaco_texto
+    if (conversaoCavacoRef) {
+      const conversaoCavaco = resolverConversaoSrCavaco(e.app, conversaoCavacoRef)
+      if (!conversaoCavaco) {
+        rejeitados++
+        detalhesItens.push({
+          indice: idx,
+          nota_fiscal: notaFiscal,
+          status: 'rejeitado',
+          motivo: `SR_Cavaco "${conversaoCavacoRef}" não encontrado no cadastro de carretas.`,
+        })
+        continue
+      }
+      convCavacoId = conversaoCavaco.id
+      srCavacoCodigo = conversaoCavaco.getString('id_carreta')
     }
 
     try {
@@ -1451,6 +1503,7 @@ routerAdd('POST', '/backend/v1/sheets/sincronizar', (e) => {
       if (pilhaId) novoPicador.set('pilha_origem_id', pilhaId)
       if (caminhaoId) novoPicador.set('caminhao_id', caminhaoId)
       if (convCavacoId) novoPicador.set('conversao_cavaco_id', convCavacoId)
+      if (srCavacoCodigo) novoPicador.set('sr_cavaco_texto', srCavacoCodigo)
 
       e.app.save(novoPicador)
 
@@ -2041,7 +2094,7 @@ routerAdd('POST', '/backend/v1/importador/executar', (e) => {
 
   // Helper de conversão para tempo HH:MM:SS (evita data de época Excel ~1899)
   const formatarTempoDuracao = (valor) => {
-    if (!valor) return ''
+    if (valor === null || valor === undefined || valor === '') return ''
     const s = valor.toString().trim()
     if (!s) return ''
     // Já está em formato HH:MM:SS ou H:MM:SS
@@ -2051,6 +2104,14 @@ routerAdd('POST', '/backend/v1/importador/executar', (e) => {
       const h = parts[0].padStart(2, '0')
       const m = parts[1].padStart(2, '0')
       const sec = parts[2] ? parts[2].padStart(2, '0') : '00'
+      return `${h}:${m}:${sec}`
+    }
+    const serialDuracao = Number(s.replace(',', '.'))
+    if (Number.isFinite(serialDuracao) && serialDuracao >= 0 && serialDuracao < 10) {
+      const totalSeconds = Math.round(serialDuracao * 86400)
+      const h = String(Math.floor(totalSeconds / 3600)).padStart(2, '0')
+      const m = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0')
+      const sec = String(totalSeconds % 60).padStart(2, '0')
       return `${h}:${m}:${sec}`
     }
     // Serializado como data do Excel (ex: Sat Dec 30 1899 00:01:00 GMT... ou 1899-12-30T00:01:00...)
@@ -2080,10 +2141,27 @@ routerAdd('POST', '/backend/v1/importador/executar', (e) => {
     return Number.isFinite(num) ? num : fallback
   }
 
+  const duracaoEmHoras = (valor) => {
+    const tempo = formatarTempoDuracao(valor)
+    const partes = tempo.match(/^(\d+):([0-5]\d):([0-5]\d)$/)
+    if (!partes) return null
+    return Number(partes[1]) + Number(partes[2]) / 60 + Number(partes[3]) / 3600
+  }
+
+  const horasTrabalhadasDaLinha = (dados) => {
+    const horasInformadas = dados.horas_trabalhadas ?? dados.horas
+    if (horasInformadas != null && String(horasInformadas).trim() !== '') {
+      const valorNumerico = Number(String(horasInformadas).trim().replace(',', '.'))
+      if (Number.isFinite(valorNumerico)) return valorNumerico
+    }
+    return duracaoEmHoras(dados.tempo) ?? 0
+  }
+
   // Helper inline para resolver foreign key:
   // Ordem estrita exigida: 1. ID do AppSheet -> 2. Nome / Código Natural -> 3. Auto-criação com valor padrão
-  const resolverFK = (tabela, valorBruto, contextoPai) => {
+  const resolverFK = (tabela, valorBruto, contextoPai, permitirCriacaoSintetica = true) => {
     if (!valorBruto) {
+      if (!permitirCriacaoSintetica) return ''
       // Se não informado valor bruto, tenta obter qualquer registro ativo existente ou cria entidade padrão
       const mapa = mapasFK[tabela] || {}
       const chaves = Object.values(mapa)
@@ -2200,6 +2278,10 @@ routerAdd('POST', '/backend/v1/importador/executar', (e) => {
         return achado.id
       }
     } catch (_) {}
+
+    if (!permitirCriacaoSintetica) {
+      throw new Error(`Referência "${str}" não encontrada na coleção "${tabela}".`)
+    }
 
     // Se chegou até aqui e NÃO encontrou a entidade pai: AUTO-CRIAÇÃO COM VALORES OPERACIONAIS PADRÃO
     try {
@@ -2554,7 +2636,6 @@ routerAdd('POST', '/backend/v1/importador/executar', (e) => {
           horas_trabalhadas: [
             'horas_trabalhadas',
             'horas',
-            'horimetro',
             'tempo_horas',
             'hr_trabalhadas',
           ],
@@ -3116,17 +3197,18 @@ routerAdd('POST', '/backend/v1/importador/executar', (e) => {
           if (['admin', 'operador', 'conferente'].includes(papel)) rec.set('papel', papel)
           rec.set('status', dados.status !== false)
         } else if (destinoTabela === 'historico_feller') {
-          const thId = resolverFK('talhoes', dados.talhao_id || dados.talhao)
+          const thId = resolverFK('talhoes', dados.talhao_id || dados.talhao, undefined, false)
           if (thId) rec.set('talhao_id', thId)
-          const fzId = resolverFK('fazendas', dados.fazenda_id || dados.fazenda)
+          const fzId = resolverFK('fazendas', dados.fazenda_id || dados.fazenda, undefined, false)
           if (fzId) rec.set('fazenda_id', fzId)
           const mqId = resolverFK(
             'maquinas',
             dados.maquina_id || dados.maquina || dados.equipamento || dados.id_maquina,
             { tipo: 'feller' },
+            false,
           )
           if (mqId) rec.set('maquina_id', mqId)
-          const motId = resolverFK('motivos', dados.motivo_id || dados.motivo)
+          const motId = resolverFK('motivos', dados.motivo_id || dados.motivo, undefined, false)
           if (motId) rec.set('motivo_id', motId)
 
           if (dados.email_registro)
@@ -3156,7 +3238,7 @@ routerAdd('POST', '/backend/v1/importador/executar', (e) => {
           )
           rec.set(
             'horas_trabalhadas',
-            normalizarNumero(dados.horas_trabalhadas ?? dados.horas ?? 0),
+            horasTrabalhadasDaLinha(dados),
           )
           rec.set(
             'combustivel_litros',
@@ -3169,17 +3251,18 @@ routerAdd('POST', '/backend/v1/importador/executar', (e) => {
             )
           if (dados.observacoes) rec.set('observacoes', dados.observacoes.toString())
         } else if (destinoTabela === 'historico_skidder') {
-          const thId = resolverFK('talhoes', dados.talhao_id || dados.talhao)
+          const thId = resolverFK('talhoes', dados.talhao_id || dados.talhao, undefined, false)
           if (thId) rec.set('talhao_id', thId)
-          const fzId = resolverFK('fazendas', dados.fazenda_id || dados.fazenda)
+          const fzId = resolverFK('fazendas', dados.fazenda_id || dados.fazenda, undefined, false)
           if (fzId) rec.set('fazenda_id', fzId)
           const mqId = resolverFK(
             'maquinas',
             dados.maquina_id || dados.maquina || dados.equipamento || dados.id_maquina,
             { tipo: 'skidder' },
+            false,
           )
           if (mqId) rec.set('maquina_id', mqId)
-          const motId = resolverFK('motivos', dados.motivo_id || dados.motivo)
+          const motId = resolverFK('motivos', dados.motivo_id || dados.motivo, undefined, false)
           if (motId) rec.set('motivo_id', motId)
 
           if (dados.email_registro)
@@ -3209,7 +3292,7 @@ routerAdd('POST', '/backend/v1/importador/executar', (e) => {
           )
           rec.set(
             'horas_trabalhadas',
-            normalizarNumero(dados.horas_trabalhadas ?? dados.horas ?? 0),
+            horasTrabalhadasDaLinha(dados),
           )
           rec.set(
             'combustivel_litros',
@@ -3222,21 +3305,27 @@ routerAdd('POST', '/backend/v1/importador/executar', (e) => {
           const cbId = resolverFK(
             'caminhao_baldeio',
             dados.caminhao_baldeio_id || dados.placa_baldeio || dados.equipamento || dados.caminhao,
+            undefined,
+            false,
           )
           if (cbId) rec.set('caminhao_baldeio_id', cbId)
           const thOrigem = resolverFK(
             'talhoes',
             dados.talhao_origem_id || dados.talhao || dados.origem,
+            undefined,
+            false,
           )
           if (thOrigem) rec.set('talhao_origem_id', thOrigem)
           const plDest = resolverFK(
             'pilhas',
             dados.pilha_destino_id || dados.pilha || dados.destino,
+            undefined,
+            false,
           )
           if (plDest) rec.set('pilha_destino_id', plDest)
-          const fzId = resolverFK('fazendas', dados.fazenda_id || dados.fazenda)
+          const fzId = resolverFK('fazendas', dados.fazenda_id || dados.fazenda, undefined, false)
           if (fzId) rec.set('fazenda_id', fzId)
-          const motId = resolverFK('motivos', dados.motivo_id || dados.motivo)
+          const motId = resolverFK('motivos', dados.motivo_id || dados.motivo, undefined, false)
           if (motId) rec.set('motivo_id', motId)
 
           if (dados.email_registro)
@@ -3290,21 +3379,27 @@ routerAdd('POST', '/backend/v1/importador/executar', (e) => {
           const cbId = resolverFK(
             'caminhao_baldeio',
             dados.caminhao_baldeio_id || dados.placa_baldeio || dados.caminhao,
+            undefined,
+            false,
           )
           if (cbId) rec.set('caminhao_baldeio_id', cbId)
           const plDest = resolverFK(
             'pilhas',
             dados.pilha_destino_id || dados.pilha || dados.destino,
+            undefined,
+            false,
           )
           if (plDest) rec.set('pilha_destino_id', plDest)
-          const fzId = resolverFK('fazendas', dados.fazenda_id || dados.fazenda)
+          const fzId = resolverFK('fazendas', dados.fazenda_id || dados.fazenda, undefined, false)
           if (fzId) rec.set('fazenda_id', fzId)
           const mqId = resolverFK(
             'maquinas',
             dados.maquina_id || dados.equipamento || dados.maquina,
+            undefined,
+            false,
           )
           if (mqId) rec.set('maquina_id', mqId)
-          const motId = resolverFK('motivos', dados.motivo_id || dados.motivo)
+          const motId = resolverFK('motivos', dados.motivo_id || dados.motivo, undefined, false)
           if (motId) rec.set('motivo_id', motId)
 
           if (dados.email_registro)
@@ -3375,23 +3470,36 @@ routerAdd('POST', '/backend/v1/importador/executar', (e) => {
           if (dados.motivo_rejeicao) rec.set('motivo_rejeicao', dados.motivo_rejeicao.toString())
           if (dados.conferente_nome) rec.set('conferente_nome', dados.conferente_nome.toString())
         } else if (destinoTabela === 'historico_picador') {
-          let nf = (dados.nota_fiscal || dados.ticket || dados.nf || '').toString().trim()
-          if (!nf) {
-            // Nota fiscal vazia na planilha deve ser aceita sem recusa
-            // Para garantir unicidade no banco (índice UNIQUE), gera código determinístico com base no appSheetId ou timestamp/linha
-            const refId = rawIdVal || `${new Date().getTime()}-${linhaNum}`
-            nf = `PIC-S-NOTA-${refId}`
+          const nf = (dados.nota_fiscal || dados.ticket || dados.nf || '').toString().trim()
+          if (nf) {
+            rec.set('nota_fiscal', nf)
+          } else if (
+            !isUpdate ||
+            (rec.getString('nota_fiscal') || '').startsWith('PIC-S-NOTA-')
+          ) {
+            rec.set('nota_fiscal', '')
           }
-          rec.set('nota_fiscal', nf)
-          const cmId = resolverFK('caminhoes', dados.caminhao_id || dados.caminhao || dados.placa)
+          const cmId = resolverFK(
+            'caminhoes',
+            dados.caminhao_id || dados.caminhao || dados.placa,
+            undefined,
+            false,
+          )
           if (cmId) rec.set('caminhao_id', cmId)
-          const plOrig = resolverFK('pilhas', dados.pilha_origem_id || dados.pilha || dados.origem)
+          const plOrig = resolverFK(
+            'pilhas',
+            dados.pilha_origem_id || dados.pilha || dados.origem,
+            undefined,
+            false,
+          )
           if (plOrig) rec.set('pilha_origem_id', plOrig)
-          const fzId = resolverFK('fazendas', dados.fazenda_id || dados.fazenda)
+          const fzId = resolverFK('fazendas', dados.fazenda_id || dados.fazenda, undefined, false)
           if (fzId) rec.set('fazenda_id', fzId)
           const picMqId = resolverFK(
             'maquinas',
             dados.picador || dados.picador_maquina_id || dados.maquina,
+            undefined,
+            false,
           )
           if (picMqId) {
             rec.set('picador_maquina_id', picMqId)
@@ -3399,7 +3507,7 @@ routerAdd('POST', '/backend/v1/importador/executar', (e) => {
           } else if (dados.picador) {
             rec.set('picador', dados.picador.toString().trim())
           }
-          const motId = resolverFK('motivos', dados.motivo_id || dados.motivo)
+          const motId = resolverFK('motivos', dados.motivo_id || dados.motivo, undefined, false)
           if (motId) rec.set('motivo_id', motId)
 
           if (dados.email_registro)
@@ -3417,18 +3525,31 @@ routerAdd('POST', '/backend/v1/importador/executar', (e) => {
           if (dados.localizacao) rec.set('localizacao', dados.localizacao.toString().trim())
           if (dados.inicio) rec.set('inicio', dados.inicio.toString())
           if (dados.fim) rec.set('fim', dados.fim.toString())
-          if (dados.sr_cavaco) rec.set('sr_cavaco_texto', dados.sr_cavaco.toString().trim())
-
-          const conversaoId = (dados.conversao_cavaco_id || '').toString().trim()
-          let conversaoCavaco = null
-          if (conversaoId) {
-            try {
-              conversaoCavaco = e.app.findRecordById('conversao_sr_cavaco', conversaoId)
-            } catch (errConversao) {
-              console.log(`Conversão SR_Cavaco "${conversaoId}" não encontrada:`, errConversao)
-            }
+          const conversaoCavacoRef = (
+            dados.conversao_cavaco_id ||
+            dados.sr_cavaco ||
+            dados.sr_cavaco_texto ||
+            ''
+          )
+            .toString()
+            .trim()
+          const conversaoCavaco = conversaoCavacoRef
+            ? resolverConversaoSrCavaco(e.app, conversaoCavacoRef)
+            : null
+          if (conversaoCavacoRef && !conversaoCavaco) {
+            throw new Error(
+              `SR_Cavaco "${conversaoCavacoRef}" não encontrado no cadastro de carretas.`,
+            )
           }
           rec.set('conversao_cavaco_id', conversaoCavaco ? conversaoCavaco.id : '')
+          if (conversaoCavaco) {
+            rec.set('sr_cavaco_texto', conversaoCavaco.getString('id_carreta'))
+          } else if (dados.sr_cavaco || dados.sr_cavaco_texto) {
+            rec.set(
+              'sr_cavaco_texto',
+              (dados.sr_cavaco || dados.sr_cavaco_texto).toString().trim(),
+            )
+          }
           rec.set('volume_cavaco_m3', null)
           rec.set('peso_cavaco_t', null)
           rec.set('volume_tora_consumido_m3', null)
