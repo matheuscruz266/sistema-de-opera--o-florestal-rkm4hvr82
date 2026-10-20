@@ -34,6 +34,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import {
+  operationalDateKey,
+  parseOperationalDateTime,
+  parseTempoHoras,
+} from '@/lib/historicoOperacional'
 import { apiService } from '@/services/florestalApi'
 import { HistoricoFeller } from '@/types/florestal'
 
@@ -43,13 +48,24 @@ setWorkerUrl(mapLibreWorkerUrl)
 
 const EVENT_STATUS: Record<string, { label: string; color: string }> = {
   inicio_turno: { label: 'Início de turno', color: '#2F77B5' },
+  fim_turno: { label: 'Fim de turno', color: '#1B2E1A' },
   inicio_producao: { label: 'Produção', color: '#3E8E5A' },
+  operando: { label: 'Operando', color: '#3E8E5A' },
+  carregamento: { label: 'Carregamento', color: '#3E8E5A' },
   almoco: { label: 'Almoço', color: '#7B5EA7' },
   abastecimento: { label: 'Abastecimento', color: '#E08A1E' },
   sem_operacao: { label: 'Sem operação', color: '#8C8F94' },
-  fim_turno: { label: 'Fim de turno', color: '#1B2E1A' },
   registro_diario: { label: 'Apontamento diário', color: '#64748B' },
   outro: { label: 'Outro evento', color: '#64748B' },
+}
+
+const EVENT_STATUS_ALIASES: Record<string, string> = {
+  inicio_de_turno: 'inicio_turno',
+  fim_de_turno: 'fim_turno',
+  inicio_de_producao: 'inicio_producao',
+  producao: 'inicio_producao',
+  parar: 'sem_operacao',
+  parada: 'sem_operacao',
 }
 
 type Coordinates = { lat: number; lng: number }
@@ -57,15 +73,15 @@ type DailyProduction = { date: string; trees: number }
 
 function dateLabel(date: string, options?: Intl.DateTimeFormatOptions) {
   if (!date) return '—'
-  const parsed = new Date(`${date.slice(0, 10)}T12:00:00`)
-  if (Number.isNaN(parsed.getTime())) return date
+  const parsed = parseOperationalDateTime(`${date.slice(0, 10)}T12:00:00`)
+  if (!parsed) return date
   return parsed.toLocaleDateString('pt-BR', options || { day: '2-digit', month: '2-digit' })
 }
 
 function formatTime(value?: string | null) {
   if (!value) return '—'
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return value
+  const date = parseOperationalDateTime(value)
+  if (!date) return value
   return date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
 }
 
@@ -84,14 +100,20 @@ function eventStatus(record: HistoricoFeller) {
     .replace(/[\u0300-\u036f]/g, '')
     .replace(/[^a-z0-9]+/g, '_')
     .replace(/^_|_$/g, '')
-  return EVENT_STATUS[normalized] ? normalized : 'outro'
+  const canonical = EVENT_STATUS_ALIASES[normalized] || normalized
+  return EVENT_STATUS[canonical] ? canonical : 'outro'
 }
 
 function eventHours(record: HistoricoFeller) {
   const reported = Number(record.horas_trabalhadas)
   if (Number.isFinite(reported) && reported > 0) return reported
+  const recordedDuration = parseTempoHoras(record.tempo)
+  if (recordedDuration != null && recordedDuration > 0) return recordedDuration
   if (!record.inicio || !record.fim) return 0
-  const duration = new Date(record.fim).getTime() - new Date(record.inicio).getTime()
+  const start = parseOperationalDateTime(record.inicio)?.getTime()
+  const end = parseOperationalDateTime(record.fim)?.getTime()
+  if (start == null || end == null) return 0
+  const duration = end - start
   return Number.isFinite(duration) && duration > 0 ? duration / 3_600_000 : 0
 }
 
@@ -189,9 +211,13 @@ export default function AnaliseFellerPage() {
 
   const dateOptions = useMemo(
     () =>
-      [...new Set(scopedRecords.map((record) => record.data_operacao).filter(Boolean))].sort(
-        (a, b) => b.localeCompare(a),
-      ),
+      [
+        ...new Set(
+          scopedRecords
+            .map((record) => operationalDateKey(record.data_operacao))
+            .filter((date): date is string => date !== null),
+        ),
+      ].sort((a, b) => b.localeCompare(a)),
     [scopedRecords],
   )
 
@@ -202,11 +228,11 @@ export default function AnaliseFellerPage() {
   const dayRecords = useMemo(
     () =>
       scopedRecords
-        .filter((record) => record.data_operacao === selectedDate)
+        .filter((record) => operationalDateKey(record.data_operacao) === selectedDate)
         .sort((a, b) => {
-          const aTime = a.inicio || a.created || ''
-          const bTime = b.inicio || b.created || ''
-          return aTime.localeCompare(bTime)
+          const aTime = parseOperationalDateTime(a.inicio || a.created)?.getTime() || 0
+          const bTime = parseOperationalDateTime(b.inicio || b.created)?.getTime() || 0
+          return aTime - bTime
         }),
     [scopedRecords, selectedDate],
   )
@@ -227,7 +253,7 @@ export default function AnaliseFellerPage() {
       if (!record.status_evento?.trim() || status === 'outro' || status === 'registro_diario') {
         hasCompleteStatusBreakdown = false
       }
-      if (status === 'registro_diario' || status === 'inicio_producao') {
+      if (status === 'registro_diario' || status === 'inicio_producao' || status === 'operando') {
         productionHours += hours
       }
       trees += Number(record.arvores_derrubadas) || 0
@@ -257,10 +283,11 @@ export default function AnaliseFellerPage() {
       totals.set(addDays(selectedDate, offset), 0)
     }
     scopedRecords.forEach((record) => {
-      if (totals.has(record.data_operacao)) {
+      const date = operationalDateKey(record.data_operacao)
+      if (date && totals.has(date)) {
         totals.set(
-          record.data_operacao,
-          (totals.get(record.data_operacao) || 0) + (Number(record.arvores_derrubadas) || 0),
+          date,
+          (totals.get(date) || 0) + (Number(record.arvores_derrubadas) || 0),
         )
       }
     })
@@ -296,13 +323,22 @@ export default function AnaliseFellerPage() {
   }, [dayRecords])
 
   const timelineRange = useMemo(() => {
-    const timedRecords = dayRecords.filter((record) => record.inicio)
+    const timedRecords = dayRecords
+      .map((record) => ({
+        record,
+        start: parseOperationalDateTime(record.inicio)?.getTime(),
+        end: parseOperationalDateTime(record.fim)?.getTime(),
+      }))
+      .filter(
+        (
+          item,
+        ): item is { record: HistoricoFeller; start: number; end: number | undefined } =>
+          item.start !== undefined,
+      )
     if (timedRecords.length === 0) return null
-    const start = Math.min(...timedRecords.map((record) => new Date(record.inicio!).getTime()))
+    const start = Math.min(...timedRecords.map((item) => item.start))
     const end = Math.max(
-      ...timedRecords.map((record) =>
-        record.fim ? new Date(record.fim).getTime() : new Date(record.inicio!).getTime(),
-      ),
+      ...timedRecords.map((item) => item.end ?? item.start),
     )
     return end > start ? { start, end, duration: end - start } : null
   }, [dayRecords])
@@ -946,8 +982,10 @@ function ShiftTimeline({
       >
         {records.map((record) => {
           if (!record.inicio) return null
-          const start = new Date(record.inicio).getTime()
-          const end = record.fim ? new Date(record.fim).getTime() : start
+          const start = parseOperationalDateTime(record.inicio)?.getTime()
+          if (start == null) return null
+          const end = record.fim ? parseOperationalDateTime(record.fim)?.getTime() : start
+          if (end == null) return null
           const duration = Math.max(0, end - start)
           if (!duration) return null
           const width = (duration / range.duration) * 100

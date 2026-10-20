@@ -41,7 +41,13 @@ import {
   Search,
 } from 'lucide-react'
 import { toast } from 'sonner'
-import { formatTempoHorasMinutos } from '@/lib/historicoOperacional'
+import {
+  formatDataHoraOperacional,
+  formatNotaFiscal,
+  formatTempoHorasMinutos,
+  isStatusCarregamento,
+  notaFiscalValida,
+} from '@/lib/historicoOperacional'
 
 export default function RastreabilidadePage() {
   const { fazendaAtiva } = useAuth()
@@ -141,7 +147,11 @@ export default function RastreabilidadePage() {
 
   // 5. Histórico do Picador (consumo nas pilhas de origem e expedição para NF e cliente)
   const picadoresTalhao = useMemo(() => {
-    return picadores.filter((p) => pilhasAlcancadasIds.includes(p.pilha_origem_id))
+    return picadores.filter(
+      (p) =>
+        isStatusCarregamento(p.status_evento) &&
+        pilhasAlcancadasIds.includes(p.pilha_origem_id),
+    )
   }, [picadores, pilhasAlcancadasIds])
 
   // ANÁLISE DE DIVERGÊNCIA ENTRE BALDEIO E DESCARGA
@@ -190,8 +200,12 @@ export default function RastreabilidadePage() {
       0,
     )
     const notasFiscaisGeradas = Array.from(
-      new Set(picadoresTalhao.map((p) => p.nota_fiscal)),
-    ).filter(Boolean)
+      new Set(
+        picadoresTalhao
+          .map((p) => notaFiscalValida(p.nota_fiscal))
+          .filter((nota): nota is string => nota !== null),
+      ),
+    )
 
     return {
       totalArvores,
@@ -742,22 +756,26 @@ export default function RastreabilidadePage() {
                     return (
                       <tr key={p.id} className="hover:bg-neutral-50/80">
                         <td className="py-2.5 px-4 font-mono font-bold text-[#1B5E20]">
-                          {p.nota_fiscal}
+                          {formatNotaFiscal(p.nota_fiscal)}
                         </td>
                         <td className="py-2.5 px-4 font-mono">
-                          {p.data_hora_expedicao.replace('T', ' ')}
+                          {formatDataHoraOperacional(p.data_hora_expedicao)}
                         </td>
                         <td className="py-2.5 px-4 font-bold text-[#1A2E1A]">
-                          {p.cliente || 'BRF Toledo / Destino Industrial'}
+                          {p.cliente || '—'}
                         </td>
                         <td className="py-2.5 px-4 font-mono text-[#5A6D5A]">
                           {caminhao?.placa || 'RODOVIÁRIO'} ({caminhao?.modelo || 'Cavaqueiro'})
                         </td>
                         <td className="py-2.5 px-4 text-right font-mono font-bold text-[#FF8F00]">
-                          {p.volume_cavaco_m3} m³
+                          {p.volume_cavaco_m3 && p.volume_cavaco_m3 > 0
+                            ? `${p.volume_cavaco_m3} m³`
+                            : '—'}
                         </td>
                         <td className="py-2.5 px-4 text-right font-mono font-bold text-[#1A2E1A]">
-                          {p.volume_tora_consumido_m3} m³
+                          {p.volume_tora_consumido_m3 && p.volume_tora_consumido_m3 > 0
+                            ? `${p.volume_tora_consumido_m3} m³`
+                            : '—'}
                         </td>
                         <td className="py-2.5 px-4 text-right font-mono">
                           {p.umidade_perc ? `${p.umidade_perc}%` : '—'}

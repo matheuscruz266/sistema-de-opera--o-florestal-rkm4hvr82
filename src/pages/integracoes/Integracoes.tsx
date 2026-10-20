@@ -407,6 +407,7 @@ export default function IntegracoesPage() {
     "volume_cavaco_m3": 45.0,
     "peso_cavaco_t": 14.4,
     "volume_tora_consumido_m3": 18.0,
+    "sr_cavaco": "CARRETA-90M3",
     "cliente": "Unidade de processamento",
     "umidade_perc": 42.5,
     "operador_nome": "Operador"
@@ -418,6 +419,7 @@ export default function IntegracoesPage() {
   "volume_cavaco_m3": 45.0,
   "peso_cavaco_t": 14.4,
   "volume_tora_consumido_m3": 18.0,
+  "sr_cavaco": "CARRETA-90M3",
   "cliente": "Unidade de processamento",
   "umidade_perc": 42.5,
   "pilha_codigo": "PIL-01",
@@ -1017,6 +1019,10 @@ export default function IntegracoesPage() {
                 <p className="text-xs text-[#5A6D5A]">
                   O endpoint aceita um único objeto JSON ou uma lista de registros para envio em
                   lote. Campos numéricos aceitam decimais com ponto flutuante.
+                  {' '}Para vincular a carreta cadastrada, envie <code>sr_cavaco</code> com o
+                  identificador <code>id_carreta</code> do cadastro (sem diferenciar maiúsculas e
+                  minúsculas); <code>conversao_cavaco_id</code> também aceita o ID interno do
+                  PocketBase. Um identificador informado que não exista será rejeitado.
                 </p>
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">

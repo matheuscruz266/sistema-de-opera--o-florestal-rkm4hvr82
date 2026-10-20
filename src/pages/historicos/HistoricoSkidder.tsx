@@ -32,7 +32,15 @@ import {
 } from '@/components/ui/alert-dialog'
 import { Clock, Plus, Search, Edit2, Trash2, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
-import { formatHorimetro, formatLitros, formatStatusOperacao } from '@/lib/historicoOperacional'
+import {
+  formatDataHoraOperacional,
+  formatHorasTrabalhadas,
+  formatHorimetro,
+  formatLitros,
+  formatReferenciaOperacional,
+  formatStatusOperacao,
+  statusOperacaoClass,
+} from '@/lib/historicoOperacional'
 
 export default function HistoricoSkidderPage() {
   const [registros, setRegistros] = useState<HistoricoSkidder[]>([])
@@ -235,20 +243,26 @@ export default function HistoricoSkidderPage() {
                   return (
                     <tr key={item.id} className="hover:bg-neutral-50/80 transition-colors">
                       <td className="py-3 px-4 font-mono font-medium text-[#1A2E1A]">
-                        {item.data_operacao}
+                        {formatDataHoraOperacional(item.data_operacao)}
                       </td>
                       <td className="py-3 px-4 font-bold text-[#1B5E20]">
                         {item.expand?.talhao_id?.talhao || 'Talhão'}
                       </td>
                       <td className="py-3 px-4 text-[#1A2E1A] font-medium">
-                        {item.expand?.maquina_id?.p_ordens || '—'}
+                        {formatReferenciaOperacional(item.expand?.maquina_id?.p_ordens)}
                       </td>
                       <td className="py-3 px-4 text-right font-mono">
                         {formatHorimetro(item.horimetro)}
                       </td>
-                      <td className="py-3 px-4 text-[#5A6D5A]">{formatStatusOperacao(item)}</td>
+                      <td className="py-3 px-4">
+                        <span
+                          className={`inline-flex rounded-full border px-2 py-1 text-[10px] font-semibold ${statusOperacaoClass(item)}`}
+                        >
+                          {formatStatusOperacao(item)}
+                        </span>
+                      </td>
                       <td className="py-3 px-4 text-right font-mono font-semibold text-[#1A2E1A]">
-                        {item.horas_trabalhadas.toFixed(1)} h
+                        {formatHorasTrabalhadas(item)}
                       </td>
                       <td className="py-3 px-4 text-right font-mono text-[#1A2E1A]">
                         {formatLitros(item)}

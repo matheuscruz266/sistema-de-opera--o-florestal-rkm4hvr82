@@ -33,7 +33,17 @@ import {
 import { Flame, Plus, Search, Edit2, Trash2, Loader2, FileText } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuth } from '@/context/AuthContext'
-import { formatHorimetro, formatLitros, formatStatusOperacao } from '@/lib/historicoOperacional'
+import {
+  formatDataHoraOperacional,
+  formatHorimetro,
+  formatLitros,
+  formatNotaFiscal,
+  formatReferenciaOperacional,
+  formatStatusOperacao,
+  isStatusCarregamento,
+  notaFiscalValida,
+  statusOperacaoClass,
+} from '@/lib/historicoOperacional'
 
 export default function HistoricoPicadorPage() {
   const { user } = useAuth()
@@ -185,9 +195,11 @@ export default function HistoricoPicadorPage() {
   }
 
   const filtered = registros.filter((r) => {
+    if (!isStatusCarregamento(r.status_evento)) return false
+
     const cam = r.expand?.caminhao_id?.placa || ''
     const pil = r.expand?.pilha_origem_id?.codigo || ''
-    const nf = r.nota_fiscal || ''
+    const nf = notaFiscalValida(r.nota_fiscal) || ''
     const cli = r.cliente || ''
     return (
       cam.toLowerCase().includes(search.toLowerCase()) ||
@@ -268,51 +280,59 @@ export default function HistoricoPicadorPage() {
                   <tr key={item.id} className="hover:bg-neutral-50/80 transition-colors">
                     <td className="py-3 px-4 font-mono font-bold text-[#1B5E20] flex items-center gap-1.5">
                       <FileText className="w-3.5 h-3.5 text-[#5A6D5A]" />
-                      {item.nota_fiscal}
+                      {formatNotaFiscal(item.nota_fiscal)}
                     </td>
                     <td className="py-3 px-4 font-mono text-[#5A6D5A]">
-                      {item.data_hora_expedicao.replace('T', ' ')}
+                      {formatDataHoraOperacional(item.data_hora_expedicao)}
                     </td>
                     <td className="py-3 px-4 font-mono font-semibold text-[#1A2E1A]">
-                      {item.expand?.caminhao_id?.placa || '-'}
+                      {formatReferenciaOperacional(item.expand?.caminhao_id?.placa)}
                     </td>
                     <td className="py-3 px-4 font-mono font-semibold text-[#1A2E1A]">
-                      {item.expand?.picador_maquina_id?.p_ordens || '—'}
+                      {formatReferenciaOperacional(item.expand?.picador_maquina_id?.p_ordens)}
                     </td>
                     <td className="py-3 px-4 text-right font-mono">
                       {formatHorimetro(item.horimetro)}
                     </td>
                     <td className="py-3 px-4 text-right font-mono">{formatLitros(item)}</td>
-                    <td className="py-3 px-4 text-[#5A6D5A]">{formatStatusOperacao(item)}</td>
+                    <td className="py-3 px-4">
+                      <span
+                        className={`inline-flex rounded-full border px-2 py-1 text-[10px] font-semibold ${statusOperacaoClass(item)}`}
+                      >
+                        {formatStatusOperacao(item)}
+                      </span>
+                    </td>
                     <td className="py-3 px-4 font-mono text-[#1A2E1A]">
-                      {item.expand?.pilha_origem_id?.codigo || '-'}
+                      {formatReferenciaOperacional(item.expand?.pilha_origem_id?.codigo)}
                     </td>
                     <td className="py-3 px-4 text-right font-mono font-bold text-[#FF8F00]">
-                      {item.volume_cavaco_m3 != null
+                      {item.volume_cavaco_m3 != null && item.volume_cavaco_m3 > 0
                         ? `${item.volume_cavaco_m3.toFixed(1)} m³`
-                        : '-'}
+                        : '—'}
                     </td>
                     <td className="py-3 px-4 text-right font-mono text-[#5A6D5A]">
-                      {item.peso_cavaco_t ? `${item.peso_cavaco_t.toFixed(1)} t` : '-'}
+                      {item.peso_cavaco_t && item.peso_cavaco_t > 0
+                        ? `${item.peso_cavaco_t.toFixed(1)} t`
+                        : '—'}
                     </td>
                     <td className="py-3 px-4 text-right font-mono font-bold text-[#C62828]">
-                      {item.volume_tora_consumido_m3 != null
+                      {item.volume_tora_consumido_m3 != null && item.volume_tora_consumido_m3 > 0
                         ? `-${item.volume_tora_consumido_m3.toFixed(2)} m³`
-                        : '-'}
+                        : '—'}
                     </td>
                     <td className="py-3 px-4">
                       <span
                         className={`rounded-full px-2 py-1 text-[10px] font-semibold ${
                           item.status_calculo === 'pendente' ||
-                          item.volume_cavaco_m3 == null ||
-                          item.volume_tora_consumido_m3 == null
+                          !item.volume_cavaco_m3 ||
+                          !item.volume_tora_consumido_m3
                             ? 'bg-amber-100 text-amber-800'
                             : 'bg-emerald-100 text-emerald-800'
                         }`}
                       >
                         {item.status_calculo === 'pendente' ||
-                        item.volume_cavaco_m3 == null ||
-                        item.volume_tora_consumido_m3 == null
+                        !item.volume_cavaco_m3 ||
+                        !item.volume_tora_consumido_m3
                           ? 'Pendente'
                           : 'Calculado'}
                       </span>

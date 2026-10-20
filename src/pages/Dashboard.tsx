@@ -45,6 +45,7 @@ import {
   Cell,
 } from 'recharts'
 import { toast } from 'sonner'
+import { isStatusCarregamento, operationalDateKey } from '@/lib/historicoOperacional'
 
 export default function DashboardPage() {
   const { user, fazendaAtiva, fazendas } = useAuth()
@@ -132,7 +133,11 @@ export default function DashboardPage() {
   // Total de Cavaco Medido m³ (Soma expedida pelo picador)
   const totalCavacoMedidoM3 = useMemo(() => {
     return picadores
-      .filter((p) => !fazendaAtiva || pilhasIdsFiltradas.has(p.pilha_origem_id))
+      .filter(
+        (p) =>
+          isStatusCarregamento(p.status_evento) &&
+          (!fazendaAtiva || pilhasIdsFiltradas.has(p.pilha_origem_id)),
+      )
       .reduce((acc, p) => acc + (p.volume_cavaco_m3 || 0), 0)
   }, [picadores, fazendaAtiva, pilhasIdsFiltradas])
 
@@ -159,7 +164,8 @@ export default function DashboardPage() {
     // Preenche com as datas reais das descargas e do picador
     descargas.forEach((d) => {
       if (fazendaAtiva && !pilhasIdsFiltradas.has(d.pilha_destino_id)) return
-      const dia = d.data_hora_descarga.split('T')[0]
+      const dia = operationalDateKey(d.data_hora_descarga)
+      if (!dia) return
       if (!diasMap.has(dia)) {
         diasMap.set(dia, { data: dia, toras: 0, cavaco: 0 })
       }
@@ -167,8 +173,10 @@ export default function DashboardPage() {
     })
 
     picadores.forEach((p) => {
+      if (!isStatusCarregamento(p.status_evento)) return
       if (fazendaAtiva && !pilhasIdsFiltradas.has(p.pilha_origem_id)) return
-      const dia = p.data_hora_expedicao.split('T')[0]
+      const dia = operationalDateKey(p.data_hora_expedicao)
+      if (!dia) return
       if (!diasMap.has(dia)) {
         diasMap.set(dia, { data: dia, toras: 0, cavaco: 0 })
       }

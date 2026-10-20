@@ -1114,8 +1114,9 @@ export const BASES_IMPORTADOR_CATALOGO: BaseImportadorCatalogo[] = [
         sugestoesCabecalho: ['Caminhao', 'caminhao', 'placa', 'Caminhão', 'veiculo'],
       },
       {
-        campo: 'sr_cavaco_texto',
-        label: 'SR Cavaco / Tipo Carreta (SR_Cavaco)',
+        campo: 'conversao_cavaco_id',
+        label: 'SR Cavaco cadastrado (associar pela identificação da carreta)',
+        tipo: 'relation',
         obrigatorio: false,
         sugestoesCabecalho: ['SR_Cavaco', 'sr_cavaco', 'SR Cavaco', 'carreta', 'tipo_carreta'],
       },
