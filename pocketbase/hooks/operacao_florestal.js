@@ -2565,7 +2565,16 @@ routerAdd('POST', '/backend/v1/importador/executar', (e) => {
             'litros',
             'oleo_diesel',
           ],
-          arvores_derrubadas: ['arvores_derrubadas', 'arvores', 'qtd_arvores', 'derrubadas'],
+          arvores_derrubadas: [
+            'arvores_derrubadas',
+            'arvores_derrubada',
+            'arvoresderrubadas',
+            'arvores',
+            'qtd_arvores',
+            'qtdarvores',
+            'derrubadas',
+            'num_arvores',
+          ],
           observacoes: ['observacoes', 'obs', 'comentario'],
         },
         historico_skidder: {
@@ -3153,8 +3162,11 @@ routerAdd('POST', '/backend/v1/importador/executar', (e) => {
             'combustivel_litros',
             normalizarNumero(dados.combustivel_litros ?? dados.litros ?? dados.combustivel ?? 0),
           )
-          if (dados.arvores_derrubadas != null)
-            rec.set('arvores_derrubadas', parseInt(String(dados.arvores_derrubadas), 10) || 0)
+          if (dados.arvores_derrubadas != null && dados.arvores_derrubadas !== '')
+            rec.set(
+              'arvores_derrubadas',
+              parseInt(String(dados.arvores_derrubadas).replace(',', '.'), 10) || 0,
+            )
           if (dados.observacoes) rec.set('observacoes', dados.observacoes.toString())
         } else if (destinoTabela === 'historico_skidder') {
           const thId = resolverFK('talhoes', dados.talhao_id || dados.talhao)

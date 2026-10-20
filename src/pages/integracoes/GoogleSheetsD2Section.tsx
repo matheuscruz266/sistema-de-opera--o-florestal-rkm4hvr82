@@ -499,6 +499,17 @@ export const GoogleSheetsD2Section: React.FC<GoogleSheetsD2SectionProps> = ({
           }
 
           if (
+            (colNorm === 'arvoresderrubadas' ||
+              colNorm === 'arvores' ||
+              colNorm === 'qtdarvores' ||
+              colNorm === 'derrubadas') &&
+            baseDef.camposDestino.some((c) => c.campo === 'arvores_derrubadas')
+          ) {
+            novoMapeamento[colHeader] = 'arvores_derrubadas'
+            return
+          }
+
+          if (
             (colNorm === 'tempo' || colNorm === 'duracao' || colNorm === 'tempohoras') &&
             baseDef.camposDestino.some((c) => c.campo === 'tempo')
           ) {
