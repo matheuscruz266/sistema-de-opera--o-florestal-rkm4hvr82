@@ -49,6 +49,7 @@ import {
   formatLitros,
   formatReferenciaOperacional,
   formatStatusOperacao,
+  isStatusDescarga,
   statusOperacaoClass,
 } from '@/lib/historicoOperacional'
 
@@ -127,10 +128,10 @@ export default function HistoricoDescargaPage() {
 
   const handleOpenEdit = (item: HistoricoDescarga) => {
     setEditingItem(item)
-    setCaminhaoBaldeioId(item.caminhao_baldeio_id)
-    setPilhaDestinoId(item.pilha_destino_id)
-    setDataHoraDescarga(item.data_hora_descarga)
-    setVolumeSr(item.volume_sr)
+    setCaminhaoBaldeioId(item.caminhao_baldeio_id || '')
+    setPilhaDestinoId(item.pilha_destino_id || '')
+    setDataHoraDescarga(item.data_hora_descarga || '')
+    setVolumeSr(item.volume_sr ?? '')
     setPesoBrutoT(item.peso_bruto_t ?? '')
     setPesoTaraT(item.peso_tara_t ?? '')
     setStatusAceite(item.status_aceite)
@@ -149,6 +150,7 @@ export default function HistoricoDescargaPage() {
     setSaving(true)
     try {
       const payload: Partial<HistoricoDescarga> = {
+        status_evento: 'Descarga',
         conversao_sr_id: conversaoVigente?.id,
         caminhao_baldeio_id: caminhaoBaldeioId,
         pilha_destino_id: pilhaDestinoId,
@@ -200,6 +202,8 @@ export default function HistoricoDescargaPage() {
   }
 
   const filtered = registros.filter((r) => {
+    if (!isStatusDescarga(r.status_evento)) return false
+
     const cam = r.expand?.caminhao_baldeio_id?.placa_baldeio || ''
     const pil = r.expand?.pilha_destino_id?.codigo || ''
     const conf = r.conferente_nome || ''
@@ -270,7 +274,7 @@ export default function HistoricoDescargaPage() {
                   <th className="py-3 px-4 text-right">Litragem</th>
                   <th className="py-3 px-4">Status Operação</th>
                   <th className="py-3 px-4">Pilha Destino</th>
-                  <th className="py-3 px-4 text-right">Volume SR</th>
+                  <th className="py-3 px-4 text-right">SR_Toras / Volume</th>
                   <th className="py-3 px-4 text-right">Volume m³ (Calculado)</th>
                   <th className="py-3 px-4 text-right">Peso Líquido (t)</th>
                   <th className="py-3 px-4 text-center">Status Aceite</th>
@@ -308,10 +312,14 @@ export default function HistoricoDescargaPage() {
                       {formatReferenciaOperacional(item.expand?.pilha_destino_id?.codigo)}
                     </td>
                     <td className="py-3 px-4 text-right font-mono font-bold text-[#1A2E1A]">
-                      {item.volume_sr.toFixed(1)} SR
+                      {item.volume_sr != null && item.volume_sr > 0
+                        ? `${item.volume_sr.toFixed(1)} SR${item.sr_toras_tipo ? ` · ${item.sr_toras_tipo}` : ''}`
+                        : item.sr_toras_tipo || '-'}
                     </td>
                     <td className="py-3 px-4 text-right font-mono font-bold text-emerald-800">
-                      {item.volume_m3_calculado.toFixed(2)} m³
+                      {item.volume_m3_calculado != null && item.volume_m3_calculado > 0
+                        ? `${item.volume_m3_calculado.toFixed(2)} m³`
+                        : '-'}
                     </td>
                     <td className="py-3 px-4 text-right font-mono text-[#5A6D5A]">
                       {item.peso_liquido_t ? `${item.peso_liquido_t.toFixed(1)} t` : '-'}

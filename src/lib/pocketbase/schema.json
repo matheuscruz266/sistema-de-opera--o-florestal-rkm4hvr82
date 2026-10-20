@@ -1314,28 +1314,28 @@
         {
           "name": "caminhao_baldeio_id",
           "type": "relation",
-          "required": true,
+          "required": false,
           "system": false,
           "collectionRef": "caminhao_baldeio"
         },
         {
           "name": "talhao_origem_id",
           "type": "relation",
-          "required": true,
+          "required": false,
           "system": false,
           "collectionRef": "talhoes"
         },
         {
           "name": "pilha_destino_id",
           "type": "relation",
-          "required": true,
+          "required": false,
           "system": false,
           "collectionRef": "pilhas"
         },
         {
           "name": "data_hora_saida",
           "type": "text",
-          "required": true,
+          "required": false,
           "system": false
         },
         {
@@ -1374,6 +1374,12 @@
           "required": false,
           "system": false,
           "selectValues": ["em_transito", "concluido", "cancelado"]
+        },
+        {
+          "name": "sr_toras_tipo",
+          "type": "text",
+          "required": false,
+          "system": false
         },
         {
           "name": "created",
@@ -1511,21 +1517,21 @@
         {
           "name": "caminhao_baldeio_id",
           "type": "relation",
-          "required": true,
+          "required": false,
           "system": false,
           "collectionRef": "caminhao_baldeio"
         },
         {
           "name": "pilha_destino_id",
           "type": "relation",
-          "required": true,
+          "required": false,
           "system": false,
           "collectionRef": "pilhas"
         },
         {
           "name": "data_hora_descarga",
           "type": "text",
-          "required": true,
+          "required": false,
           "system": false
         },
         {
@@ -1741,7 +1747,7 @@
         {
           "name": "data_hora_expedicao",
           "type": "text",
-          "required": true,
+          "required": false,
           "system": false
         },
         {

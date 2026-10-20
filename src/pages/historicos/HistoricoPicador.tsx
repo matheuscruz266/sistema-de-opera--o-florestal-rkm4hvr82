@@ -116,11 +116,11 @@ export default function HistoricoPicadorPage() {
 
   const handleOpenEdit = (item: HistoricoPicador) => {
     setEditingItem(item)
-    setCaminhaoId(item.caminhao_id)
-    setPilhaOrigemId(item.pilha_origem_id)
+    setCaminhaoId(item.caminhao_id || '')
+    setPilhaOrigemId(item.pilha_origem_id || '')
     setConversaoCavacoId(item.conversao_cavaco_id || '')
-    setNotaFiscal(item.nota_fiscal)
-    setDataHoraExpedicao(item.data_hora_expedicao)
+    setNotaFiscal(item.nota_fiscal || '')
+    setDataHoraExpedicao(item.data_hora_expedicao || '')
     setVolumeCavacoM3(item.volume_cavaco_m3 ?? '')
     setPesoCavacoT(item.peso_cavaco_t ?? '')
     setVolumeToraConsumidoM3(item.volume_tora_consumido_m3 ?? '')
@@ -148,6 +148,7 @@ export default function HistoricoPicadorPage() {
     setSaving(true)
     try {
       const payload: Partial<HistoricoPicador> = {
+        status_evento: 'Carregamento',
         conversao_cavaco_id: conversaoCavacoId || undefined,
         caminhao_id: caminhaoId,
         pilha_origem_id: pilhaOrigemId,

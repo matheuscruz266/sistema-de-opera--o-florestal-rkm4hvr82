@@ -1,4 +1,75 @@
-/// <reference path="../pb_data/types.d.ts" />
+const normalizarIdentificadorSrCavaco = (valor) => String(valor || '').trim().toUpperCase()
+const historicosComIdAppSheet = [
+  'historico_feller',
+  'historico_skidder',
+  'historico_baldeio',
+  'historico_descarga',
+  'historico_picador',
+]
+
+const statusEventoNormalizado = (valor) => String(valor || '').trim().toLowerCase()
+const isStatusEventoDescarga = (valor) =>
+  ['descarga', 'descargar'].includes(statusEventoNormalizado(valor))
+
+const normalizarDataHoraSheets = (valor) => {
+  if (valor == null || String(valor).trim() === '') return ''
+
+  const texto = String(valor).trim()
+  const serial = Number(texto)
+  if (Number.isFinite(serial) && serial >= 1 && serial < 2958466) {
+    const dias = Math.floor(serial)
+    const segundos = Math.round((serial - dias) * 86400)
+    return new Date(Date.UTC(1899, 11, 30) + dias * 86400000 + segundos * 1000)
+      .toISOString()
+      .slice(0, 19)
+  }
+
+  const dataBrasileira = texto.match(
+    /^(\d{1,2})[/. -](\d{1,2})[/. -](\d{4})(?:[ T,]+(\d{1,2}):(\d{2})(?::(\d{2}))?)?$/,
+  )
+  if (dataBrasileira) {
+    const [, dia, mes, ano, hora = '0', minuto = '0', segundo = '0'] = dataBrasileira
+    const partes = [ano, mes, dia, hora, minuto, segundo].map(Number)
+    const data = new Date(Date.UTC(partes[0], partes[1] - 1, partes[2], partes[3], partes[4], partes[5]))
+    if (
+      data.getUTCFullYear() === partes[0] &&
+      data.getUTCMonth() === partes[1] - 1 &&
+      data.getUTCDate() === partes[2] &&
+      partes[3] < 24 &&
+      partes[4] < 60 &&
+      partes[5] < 60
+    ) {
+      return `${String(partes[0]).padStart(4, '0')}-${String(partes[1]).padStart(2, '0')}-${String(
+        partes[2],
+      ).padStart(2, '0')}T${String(partes[3]).padStart(2, '0')}:${String(partes[4]).padStart(
+        2,
+        '0',
+      )}:${String(partes[5]).padStart(2, '0')}`
+    }
+    return texto
+  }
+
+  return texto
+}
+
+const resolverConversaoSrCavaco = (app, valor) => {
+  const referencia = String(valor || '').trim()
+  if (!referencia) return null
+
+  try {
+    const porId = app.findRecordById('conversao_sr_cavaco', referencia)
+    if (porId) return porId
+  } catch (_) {}
+
+  const identificador = normalizarIdentificadorSrCavaco(referencia)
+  const conversoes = app.findRecordsByFilter('conversao_sr_cavaco', '', 'id_carreta', 1000, 0)
+  for (let i = 0; i < conversoes.length; i++) {
+    if (normalizarIdentificadorSrCavaco(conversoes[i].getString('id_carreta')) === identificador) {
+      return conversoes[i]
+    }
+  }
+  return null
+}
 
 // Hook para histórico de descarga - atualiza estoque da pilha destino
 onRecordAfterCreateSuccess((e) => {
@@ -1802,7 +1873,13 @@ routerAdd('POST', '/backend/v1/importador/previa', (e) => {
     if (colunaId) {
       idxColId = cabecalhos.findIndex((h) => h.toLowerCase() === colunaId.toLowerCase())
     }
-    if (idxColId === -1) {
+    if (idxColId === -1 && historicosComIdAppSheet.includes(destinoTabela)) {
+      idxColId = cabecalhos.findIndex((h) => {
+        const header = h.toLowerCase().replace(/[^a-z0-9_]/g, '')
+        return header === 'id_appsheet' || /^id_historico(?:_.*)?$/.test(header)
+      })
+    }
+    if (idxColId === -1 && !historicosComIdAppSheet.includes(destinoTabela)) {
       // Tenta inferir se não encontrada
       idxColId = cabecalhos.findIndex((h) => {
         const hl = h.toLowerCase().replace(/[^a-z0-9_]/g, '')
@@ -1829,6 +1906,18 @@ routerAdd('POST', '/backend/v1/importador/previa', (e) => {
       const rawIdVal =
         idxColId >= 0 && row[idxColId] !== undefined ? row[idxColId].toString().trim() : ''
       const appSheetIdVal = rawIdVal || `LINHA_${linhaNum}`
+      if (historicosComIdAppSheet.includes(destinoTabela) && !rawIdVal) {
+        basePrevia.rejeitar++
+        previaResultado.resumo_geral.total_rejeitar++
+        if (basePrevia.rejeitados_lista.length < 20) {
+          basePrevia.rejeitados_lista.push({
+            linha: linhaNum,
+            id_planilha: '',
+            motivo: 'ID único do AppSheet obrigatório para importar histórico operacional',
+          })
+        }
+        continue
+      }
       let maquinaIdVal = ''
       if (destinoTabela === 'maquinas') {
         let idxIdMaquina = cabecalhos.findIndex((h) => mapeamento[h] === 'id_maquina')
@@ -2035,6 +2124,38 @@ routerAdd('POST', '/backend/v1/importador/executar', (e) => {
     conversao_sr_toras: {},
     conversao_sr_cavaco: {},
   }
+  const chavesFKAmbiguas = {
+    fazendas: {},
+    talhoes: {},
+    maquinas: {},
+    caminhoes: {},
+    caminhao_baldeio: {},
+    pilhas: {},
+    motivos: {},
+    users: {},
+    conversao_sr_toras: {},
+    conversao_sr_cavaco: {},
+  }
+  const registrarChaveFK = (nomeColecao, chave, registroId) => {
+    if (!chave) return
+    const existente = mapasFK[nomeColecao][chave]
+    if (existente && existente !== registroId) {
+      chavesFKAmbiguas[nomeColecao][chave] = true
+      delete mapasFK[nomeColecao][chave]
+      return
+    }
+    if (!chavesFKAmbiguas[nomeColecao][chave]) {
+      mapasFK[nomeColecao][chave] = registroId
+    }
+  }
+  const obterChaveFK = (nomeColecao, chave) => {
+    if (chavesFKAmbiguas[nomeColecao][chave]) {
+      throw new Error(
+        `Referência "${chave}" é ambígua na coleção "${nomeColecao}"; informe um identificador único.`,
+      )
+    }
+    return mapasFK[nomeColecao][chave] || ''
+  }
 
   // Pre-carrega todas as entidades existentes para resolução de FKs e checagem de upsert
   const colecoesCarregar = Object.keys(mapasFK)
@@ -2044,38 +2165,38 @@ routerAdd('POST', '/backend/v1/importador/executar', (e) => {
       const recs = e.app.findRecordsByFilter(colName, '', '', 5000, 0)
       for (let r = 0; r < recs.length; r++) {
         const rec = recs[r]
-        mapasFK[colName][rec.id] = rec.id
+        registrarChaveFK(colName, rec.id, rec.id)
         const asId = (rec.getString('app_sheet_id') || '').trim()
-        if (asId) mapasFK[colName][asId] = rec.id
+        if (asId) registrarChaveFK(colName, asId, rec.id)
 
         if (colName === 'fazendas') {
           const cod = (rec.getString('codigo') || '').trim().toLowerCase()
-          if (cod) mapasFK[colName][cod] = rec.id
+          if (cod) registrarChaveFK(colName, cod, rec.id)
           const nm = (rec.getString('nome') || '').trim().toLowerCase()
-          if (nm) mapasFK[colName][nm] = rec.id
+          if (nm) registrarChaveFK(colName, nm, rec.id)
         } else if (colName === 'talhoes') {
           const t = (rec.getString('talhao') || '').trim().toLowerCase()
-          if (t) mapasFK[colName][t] = rec.id
+          if (t) registrarChaveFK(colName, t, rec.id)
         } else if (colName === 'maquinas') {
           const m = (rec.getString('id_maquina') || '').trim().toLowerCase()
-          if (m) mapasFK[colName][m] = rec.id
+          if (m) registrarChaveFK(colName, m, rec.id)
         } else if (colName === 'caminhoes') {
           const p = (rec.getString('placa') || '').trim().toUpperCase()
-          if (p) mapasFK[colName][p] = rec.id
+          if (p) registrarChaveFK(colName, p, rec.id)
         } else if (colName === 'caminhao_baldeio') {
           const pb = (rec.getString('placa_baldeio') || '').trim().toUpperCase()
-          if (pb) mapasFK[colName][pb] = rec.id
+          if (pb) registrarChaveFK(colName, pb, rec.id)
         } else if (colName === 'pilhas') {
           const pk = (rec.getString('codigo') || '').trim().toLowerCase()
-          if (pk) mapasFK[colName][pk] = rec.id
+          if (pk) registrarChaveFK(colName, pk, rec.id)
         } else if (colName === 'motivos') {
           const mt = (rec.getString('id_motivo') || '').trim().toLowerCase()
-          if (mt) mapasFK[colName][mt] = rec.id
+          if (mt) registrarChaveFK(colName, mt, rec.id)
         } else if (colName === 'users') {
           const em = (rec.getString('email') || '').trim().toLowerCase()
-          if (em) mapasFK[colName][em] = rec.id
+          if (em) registrarChaveFK(colName, em, rec.id)
           const nm = (rec.getString('name') || '').trim().toLowerCase()
-          if (nm) mapasFK[colName][nm] = rec.id
+          if (nm) registrarChaveFK(colName, nm, rec.id)
         }
       }
     } catch (_) {}
@@ -2494,7 +2615,13 @@ routerAdd('POST', '/backend/v1/importador/executar', (e) => {
     if (colunaId) {
       idxColId = cabecalhos.findIndex((h) => h.toLowerCase() === colunaId.toLowerCase())
     }
-    if (idxColId === -1) {
+    if (idxColId === -1 && historicosComIdAppSheet.includes(destinoTabela)) {
+      idxColId = cabecalhos.findIndex((h) => {
+        const header = h.toLowerCase().replace(/[^a-z0-9_]/g, '')
+        return header === 'id_appsheet' || /^id_historico(?:_.*)?$/.test(header)
+      })
+    }
+    if (idxColId === -1 && !historicosComIdAppSheet.includes(destinoTabela)) {
       idxColId = cabecalhos.findIndex((h) => {
         const hl = h.toLowerCase().replace(/[^a-z0-9_]/g, '')
         return (
@@ -2554,6 +2681,19 @@ routerAdd('POST', '/backend/v1/importador/executar', (e) => {
 
       const rawIdVal =
         idxColId >= 0 && row[idxColId] !== undefined ? row[idxColId].toString().trim() : ''
+      if (historicosComIdAppSheet.includes(destinoTabela) && !rawIdVal) {
+        baseRes.rejeitados++
+        resultadoGeral.total_rejeitados++
+        if (baseRes.detalhes.length < 30) {
+          baseRes.detalhes.push({
+            linha: linhaNum,
+            id_chave: '',
+            status: 'rejeitado',
+            motivo: 'ID único do AppSheet obrigatório para importar histórico operacional',
+          })
+        }
+        continue
+      }
       const appSheetId = rawIdVal || `LINHA_${linhaNum}`
 
       // Monta objeto de dados a partir do mapeamento ou heurística
@@ -2759,15 +2899,15 @@ routerAdd('POST', '/backend/v1/importador/executar', (e) => {
             'volume',
             'sr',
             'volume_estereo',
-            'sr_toras',
             'sr_toras_sr',
             'volume_sr_toras',
           ],
+          sr_toras_tipo: ['sr_toras_tipo', 'sr_toras', 'tipo_sr'],
           volume_m3_estimado: ['volume_m3_estimado', 'volume_m3', 'm3_estimado', 'vol_m3'],
           motorista: ['motorista', 'operador', 'condutor'],
           numero_viagem: ['numero_viagem', 'viagem', 'ticket', 'numero'],
           ordem: ['ordem', 'ordem_carregamento', 'n_ordem', 'numero_ordem'],
-          status_baldeio: ['status_baldeio', 'status', 'situacao'],
+          status_baldeio: ['status_baldeio'],
         },
         historico_descarga: {
           caminhao_baldeio_id: [
@@ -2809,12 +2949,13 @@ routerAdd('POST', '/backend/v1/importador/executar', (e) => {
             'dt_descarga',
             'inicio',
           ],
-          volume_sr: ['volume_sr', 'volume', 'sr', 'volume_estereo', 'sr_toras', 'sr_toras_sr'],
+          volume_sr: ['volume_sr', 'volume', 'sr', 'volume_estereo', 'sr_toras_sr'],
+          sr_toras_tipo: ['sr_toras_tipo', 'sr_toras', 'tipo_sr'],
           volume_m3_calculado: ['volume_m3_calculado', 'volume_m3', 'm3_calculado', 'm3'],
           peso_bruto_t: ['peso_bruto_t', 'peso_bruto', 'bruto', 'peso_bruto_kg'],
           peso_tara_t: ['peso_tara_t', 'tara', 'peso_tara', 'peso_tara_kg'],
           peso_liquido_t: ['peso_liquido_t', 'peso_liquido', 'liquido', 'peso_liquido_kg'],
-          status_aceite: ['status_aceite', 'status', 'aceite'],
+          status_aceite: ['status_aceite', 'aceite'],
           motivo_rejeicao: ['motivo_rejeicao', 'motivo', 'justificativa'],
           conferente_nome: ['conferente_nome', 'conferente', 'classificador', 'operador'],
           ordem: ['ordem', 'ordem_carregamento', 'n_ordem', 'numero_ordem'],
@@ -3366,35 +3507,49 @@ routerAdd('POST', '/backend/v1/importador/executar', (e) => {
           if (dados.ordem) rec.set('ordem', dados.ordem.toString().trim())
 
           if (defaultConvTorasId) rec.set('conversao_sr_id', defaultConvTorasId)
-          rec.set(
-            'data_hora_saida',
-            (
-              dados.data_hora_saida ||
-              dados.data_hora ||
-              dados.inicio ||
-              dados.data ||
-              new Date().toISOString()
-            ).toString(),
-          )
+          const dataHoraSaida = dados.data_hora_saida || dados.data_hora || dados.inicio || dados.data
+          if (dataHoraSaida) rec.set('data_hora_saida', normalizarDataHoraSheets(dataHoraSaida))
           if (dados.data_hora_chegada || dados.fim)
-            rec.set('data_hora_chegada', (dados.data_hora_chegada || dados.fim).toString())
-          rec.set(
-            'volume_sr',
-            parseFloat(String(dados.volume_sr || dados.volume || 0).replace(',', '.')) || 0,
-          )
-          if (dados.volume_m3_estimado != null)
             rec.set(
-              'volume_m3_estimado',
-              parseFloat(String(dados.volume_m3_estimado).replace(',', '.')) || 0,
+              'data_hora_chegada',
+              normalizarDataHoraSheets(dados.data_hora_chegada || dados.fim),
             )
+          const srTorasBaldeio = String(
+            dados.sr_toras_tipo ||
+              dados.sr_toras ||
+              (isNaN(Number(String(dados.volume_sr).replace(',', '.'))) ? dados.volume_sr : '') ||
+              '',
+          ).trim()
+          const tipoSrTorasBaldeio =
+            srTorasBaldeio && !Number.isFinite(Number(srTorasBaldeio.replace(',', '.')))
+              ? srTorasBaldeio
+              : ''
+          if (tipoSrTorasBaldeio) rec.set('sr_toras_tipo', tipoSrTorasBaldeio)
+          const valoresVolumeSrBaldeio = [
+            dados.volume_sr,
+            dados.volume,
+            dados.sr_toras,
+            dados.sr_toras_tipo,
+          ]
+            .filter((valor) => valor != null && String(valor).trim() !== '')
+            .map((valor) => Number(String(valor).replace(',', '.')))
+          const volumeSrBaldeio = valoresVolumeSrBaldeio.find(Number.isFinite)
+          if (Number.isFinite(volumeSrBaldeio)) {
+            rec.set('volume_sr', volumeSrBaldeio)
+            if (dados.volume_m3_estimado != null && dados.volume_m3_estimado !== '') {
+              rec.set('volume_m3_estimado', normalizarNumero(dados.volume_m3_estimado))
+            } else if (defaultConvTorasId) {
+              const conversaoToras = e.app.findRecordById('conversao_sr_toras', defaultConvTorasId)
+              const fatorM3Sr = conversaoToras.getFloat('fator_m3_sr')
+              if (Number.isFinite(fatorM3Sr) && fatorM3Sr > 0) {
+                rec.set('volume_m3_estimado', Number((volumeSrBaldeio * fatorM3Sr).toFixed(2)))
+              }
+            }
+          }
           if (dados.motorista) rec.set('motorista', dados.motorista.toString())
           if (dados.numero_viagem) rec.set('numero_viagem', dados.numero_viagem.toString())
-          rec.set(
-            'status_baldeio',
-            ['em_transito', 'concluido', 'cancelado'].includes(dados.status_baldeio)
-              ? dados.status_baldeio
-              : 'concluido',
-          )
+          if (['em_transito', 'concluido', 'cancelado'].includes(dados.status_baldeio))
+            rec.set('status_baldeio', dados.status_baldeio)
         } else if (destinoTabela === 'historico_descarga') {
           const cbId = resolverFK(
             'caminhao_baldeio',
@@ -3447,31 +3602,45 @@ routerAdd('POST', '/backend/v1/importador/executar', (e) => {
           }
 
           if (defaultConvTorasId) rec.set('conversao_sr_id', defaultConvTorasId)
-          rec.set(
-            'data_hora_descarga',
-            (
-              dados.data_hora_descarga ||
-              dados.data_hora ||
-              dados.inicio ||
-              dados.data ||
-              new Date().toISOString()
-            ).toString(),
-          )
-          rec.set(
-            'volume_sr',
-            parseFloat(
-              String(dados.volume_sr || (dados.sr_toras_tipo ? 0 : dados.sr_toras) || 0).replace(
-                ',',
-                '.',
-              ),
-            ) || 0,
-          )
-          rec.set(
-            'volume_m3_calculado',
-            parseFloat(
-              String(dados.volume_m3_calculado || dados.volume_m3 || 0).replace(',', '.'),
-            ) || 0,
-          )
+          const dataHoraDescarga =
+            dados.data_hora_descarga || dados.data_hora || dados.inicio || dados.data
+          if (dataHoraDescarga)
+            rec.set('data_hora_descarga', normalizarDataHoraSheets(dataHoraDescarga))
+          const srTorasDescarga = String(
+            dados.sr_toras_tipo ||
+              dados.sr_toras ||
+              (isNaN(Number(String(dados.volume_sr).replace(',', '.'))) ? dados.volume_sr : '') ||
+              '',
+          ).trim()
+          const tipoSrTorasDescarga =
+            srTorasDescarga && !Number.isFinite(Number(srTorasDescarga.replace(',', '.')))
+              ? srTorasDescarga
+              : ''
+          if (tipoSrTorasDescarga) rec.set('sr_toras_tipo', tipoSrTorasDescarga)
+          const valoresVolumeSrDescarga = [
+            dados.volume_sr,
+            dados.sr_toras,
+            dados.sr_toras_tipo,
+          ]
+            .filter((valor) => valor != null && String(valor).trim() !== '')
+            .map((valor) => Number(String(valor).replace(',', '.')))
+          const volumeSrDescarga = valoresVolumeSrDescarga.find(Number.isFinite)
+          let volumeM3Descarga = NaN
+          if (Number.isFinite(volumeSrDescarga)) {
+            rec.set('volume_sr', volumeSrDescarga)
+            const volumeM3Informado = dados.volume_m3_calculado ?? dados.volume_m3
+            if (volumeM3Informado != null && String(volumeM3Informado).trim() !== '') {
+              volumeM3Descarga = normalizarNumero(volumeM3Informado, NaN)
+            } else if (defaultConvTorasId) {
+              const conversaoToras = e.app.findRecordById('conversao_sr_toras', defaultConvTorasId)
+              const fatorM3Sr = conversaoToras.getFloat('fator_m3_sr')
+              if (Number.isFinite(fatorM3Sr) && fatorM3Sr > 0) {
+                volumeM3Descarga = Number((volumeSrDescarga * fatorM3Sr).toFixed(2))
+              }
+            }
+            if (Number.isFinite(volumeM3Descarga))
+              rec.set('volume_m3_calculado', volumeM3Descarga)
+          }
           if (dados.peso_bruto_t != null)
             rec.set('peso_bruto_t', parseFloat(String(dados.peso_bruto_t).replace(',', '.')) || 0)
           if (dados.peso_tara_t != null)
@@ -3481,11 +3650,28 @@ routerAdd('POST', '/backend/v1/importador/executar', (e) => {
               'peso_liquido_t',
               parseFloat(String(dados.peso_liquido_t).replace(',', '.')) || 0,
             )
+          const statusAceiteInformado = statusEventoNormalizado(dados.status_aceite)
+          const statusEventoDescarga = isStatusEventoDescarga(dados.status_evento)
+          const descargaComDadosDeEstoque =
+            statusEventoDescarga &&
+            Boolean(cbId) &&
+            Boolean(plDest) &&
+            volumeSrDescarga > 0 &&
+            volumeM3Descarga > 0
+          const statusAceiteValido = ['aceito', 'rejeitado', 'pendente'].includes(
+            statusAceiteInformado,
+          )
           rec.set(
             'status_aceite',
-            ['aceito', 'rejeitado', 'pendente'].includes(dados.status_aceite)
-              ? dados.status_aceite
-              : 'aceito',
+            !statusEventoDescarga
+              ? 'pendente'
+              : !descargaComDadosDeEstoque
+                ? statusAceiteInformado === 'rejeitado'
+                  ? 'rejeitado'
+                  : 'pendente'
+                : statusAceiteValido
+                  ? statusAceiteInformado
+                  : 'aceito',
           )
           if (dados.motivo_rejeicao) rec.set('motivo_rejeicao', dados.motivo_rejeicao.toString())
           if (dados.conferente_nome) rec.set('conferente_nome', dados.conferente_nome.toString())
@@ -3542,47 +3728,25 @@ routerAdd('POST', '/backend/v1/importador/executar', (e) => {
           if (dados.localizacao) rec.set('localizacao', dados.localizacao.toString().trim())
           if (dados.inicio) rec.set('inicio', dados.inicio.toString())
           if (dados.fim) rec.set('fim', dados.fim.toString())
-          const conversaoCavacoRef = (
-            dados.conversao_cavaco_id ||
-            dados.sr_cavaco ||
-            dados.sr_cavaco_texto ||
-            ''
-          )
-            .toString()
-            .trim()
-          let conversaoCavaco = null
-          if (conversaoCavacoRef) {
-            try {
-              const porId = e.app.findRecordById('conversao_sr_cavaco', conversaoCavacoRef)
-              if (porId) conversaoCavaco = porId
-            } catch (_) {}
-
-            if (!conversaoCavaco) {
-              const idNorm = conversaoCavacoRef.toUpperCase()
-              const conversoes = e.app.findRecordsByFilter(
-                'conversao_sr_cavaco',
-                '',
-                'id_carreta',
-                1000,
-                0,
+          const eventoPicadorCarregamento =
+            statusEventoNormalizado(dados.status_evento) === 'carregamento'
+          const conversaoCavacoRef = eventoPicadorCarregamento
+            ? (
+                dados.conversao_cavaco_id ||
+                dados.sr_cavaco ||
+                dados.sr_cavaco_texto ||
+                ''
               )
-              for (let k = 0; k < conversoes.length; k++) {
-                if (
-                  String(conversoes[k].getString('id_carreta') || '')
-                    .trim()
-                    .toUpperCase() === idNorm
-                ) {
-                  conversaoCavaco = conversoes[k]
-                  break
-                }
-              }
-            }
-
-            if (!conversaoCavaco) {
-              throw new Error(
-                `SR_Cavaco "${conversaoCavacoRef}" não encontrado no cadastro de carretas.`,
-              )
-            }
+                .toString()
+                .trim()
+            : ''
+          const conversaoCavaco = conversaoCavacoRef
+            ? resolverConversaoSrCavaco(e.app, conversaoCavacoRef)
+            : null
+          if (eventoPicadorCarregamento && conversaoCavacoRef && !conversaoCavaco) {
+            throw new Error(
+              `SR_Cavaco "${conversaoCavacoRef}" não encontrado no cadastro de carretas.`,
+            )
           }
           rec.set('conversao_cavaco_id', conversaoCavaco ? conversaoCavaco.id : '')
           if (conversaoCavaco) {
@@ -3594,10 +3758,13 @@ routerAdd('POST', '/backend/v1/importador/executar', (e) => {
           rec.set('peso_cavaco_t', null)
           rec.set('volume_tora_consumido_m3', null)
 
-          const capacidadeCavaco = conversaoCavaco
+          const capacidadeCavaco = eventoPicadorCarregamento && conversaoCavaco
             ? conversaoCavaco.getFloat('capacidade_m3')
             : null
-          const fatorPeso = conversaoCavaco ? conversaoCavaco.getFloat('fator_t_m3') : null
+          const fatorPeso =
+            eventoPicadorCarregamento && conversaoCavaco
+              ? conversaoCavaco.getFloat('fator_t_m3')
+              : null
           const volumeCavacoValido = Number.isFinite(capacidadeCavaco) && capacidadeCavaco > 0
           if (volumeCavacoValido) {
             rec.set('volume_cavaco_m3', capacidadeCavaco)
@@ -3618,16 +3785,10 @@ routerAdd('POST', '/backend/v1/importador/executar', (e) => {
           } else {
             rec.set('status_calculo', 'pendente')
           }
-          rec.set(
-            'data_hora_expedicao',
-            (
-              dados.data_hora_expedicao ||
-              dados.inicio ||
-              dados.data_hora ||
-              dados.data ||
-              new Date().toISOString()
-            ).toString(),
-          )
+          const dataHoraExpedicao =
+            dados.data_hora_expedicao || dados.inicio || dados.data_hora || dados.data
+          if (dataHoraExpedicao)
+            rec.set('data_hora_expedicao', normalizarDataHoraSheets(dataHoraExpedicao))
           if (dados.cliente) rec.set('cliente', dados.cliente.toString())
           if (dados.umidade_perc != null)
             rec.set('umidade_perc', parseFloat(String(dados.umidade_perc).replace(',', '.')) || 0)

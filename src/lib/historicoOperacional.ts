@@ -170,6 +170,15 @@ export function isStatusCarregamento(status?: string | null) {
   )
 }
 
+export function isStatusDescarga(status?: string | null) {
+  const normalizedStatus = status
+    ?.normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .toLowerCase()
+  return normalizedStatus === 'descarga' || normalizedStatus === 'descargar'
+}
+
 export function notaFiscalValida(value?: string | null) {
   const nota = value?.trim()
   return nota && !nota.toUpperCase().startsWith('PIC-S-NOTA-') ? nota : null

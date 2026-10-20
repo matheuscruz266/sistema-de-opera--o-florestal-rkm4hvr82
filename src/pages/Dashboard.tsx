@@ -45,7 +45,11 @@ import {
   Cell,
 } from 'recharts'
 import { toast } from 'sonner'
-import { isStatusCarregamento, operationalDateKey } from '@/lib/historicoOperacional'
+import {
+  isStatusCarregamento,
+  isStatusDescarga,
+  operationalDateKey,
+} from '@/lib/historicoOperacional'
 
 export default function DashboardPage() {
   const { user, fazendaAtiva, fazendas } = useAuth()
@@ -124,7 +128,12 @@ export default function DashboardPage() {
     // Se não houver inventário oficial, soma das descargas aceitas
     if (total === 0) {
       total = descargas
-        .filter((d) => !fazendaAtiva || pilhasIdsFiltradas.has(d.pilha_destino_id))
+        .filter(
+          (d) =>
+            isStatusDescarga(d.status_evento) &&
+            d.status_aceite === 'aceito' &&
+            (!fazendaAtiva || (d.pilha_destino_id && pilhasIdsFiltradas.has(d.pilha_destino_id))),
+        )
         .reduce((acc, d) => acc + (d.volume_m3_calculado || 0), 0)
     }
     return total
@@ -163,7 +172,9 @@ export default function DashboardPage() {
 
     // Preenche com as datas reais das descargas e do picador
     descargas.forEach((d) => {
-      if (fazendaAtiva && !pilhasIdsFiltradas.has(d.pilha_destino_id)) return
+      if (!isStatusDescarga(d.status_evento) || d.status_aceite !== 'aceito') return
+      if (fazendaAtiva && (!d.pilha_destino_id || !pilhasIdsFiltradas.has(d.pilha_destino_id)))
+        return
       const dia = operationalDateKey(d.data_hora_descarga)
       if (!dia) return
       if (!diasMap.has(dia)) {

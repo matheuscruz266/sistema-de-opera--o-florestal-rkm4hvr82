@@ -508,7 +508,7 @@ export const BASES_IMPORTADOR_CATALOGO: BaseImportadorCatalogo[] = [
       {
         campo: 'id_appsheet',
         label: 'ID Histórico AppSheet (id_historico)',
-        obrigatorio: false,
+        obrigatorio: true,
         sugestoesCabecalho: [
           'id_historico',
           'id_historico_feller',
@@ -690,7 +690,7 @@ export const BASES_IMPORTADOR_CATALOGO: BaseImportadorCatalogo[] = [
       {
         campo: 'id_appsheet',
         label: 'ID Histórico AppSheet (id_historico)',
-        obrigatorio: false,
+        obrigatorio: true,
         sugestoesCabecalho: [
           'id_historico',
           'id_historico_skidder',
@@ -854,7 +854,7 @@ export const BASES_IMPORTADOR_CATALOGO: BaseImportadorCatalogo[] = [
       {
         campo: 'id_appsheet',
         label: 'ID Histórico AppSheet (id_historico)',
-        obrigatorio: false,
+        obrigatorio: true,
         sugestoesCabecalho: ['id_historico', 'ID_Historico', 'Id_Historico', 'id'],
       },
       {
@@ -927,9 +927,16 @@ export const BASES_IMPORTADOR_CATALOGO: BaseImportadorCatalogo[] = [
       },
       {
         campo: 'sr_toras_tipo',
-        label: 'Tipo ou Volume de SR Toras (SR_Toras)',
+        label: 'Tipo de SR/Toras (SR_Toras)',
         obrigatorio: false,
-        sugestoesCabecalho: ['SR_Toras', 'sr_toras', 'sr_toras_tipo', 'volume_sr', 'sr'],
+        sugestoesCabecalho: ['SR_Toras', 'sr_toras', 'sr_toras_tipo', 'tipo_sr'],
+      },
+      {
+        campo: 'volume_sr',
+        label: 'Volume SR (numérico)',
+        tipo: 'number',
+        obrigatorio: false,
+        sugestoesCabecalho: ['volume_sr', 'volume', 'sr', 'volume_estereo', 'sr_toras_sr'],
       },
       {
         campo: 'horimetro',
@@ -1044,7 +1051,7 @@ export const BASES_IMPORTADOR_CATALOGO: BaseImportadorCatalogo[] = [
       {
         campo: 'id_appsheet',
         label: 'ID Histórico AppSheet (id_historico)',
-        obrigatorio: false,
+        obrigatorio: true,
         sugestoesCabecalho: ['id_historico', 'ID_Historico', 'Id_Historico', 'id'],
       },
       {
@@ -1326,7 +1333,7 @@ export const BASES_IMPORTADOR_CATALOGO: BaseImportadorCatalogo[] = [
       {
         campo: 'id_appsheet',
         label: 'ID Histórico AppSheet (id_historico)',
-        obrigatorio: false,
+        obrigatorio: true,
         sugestoesCabecalho: [
           'id_historico',
           'id_historico_baldeio',
@@ -1485,13 +1492,17 @@ export const BASES_IMPORTADOR_CATALOGO: BaseImportadorCatalogo[] = [
         sugestoesCabecalho: ['Tempo', 'tempo', 'duracao', 'horas', 'tempo_horas'],
       },
       {
+        campo: 'sr_toras_tipo',
+        label: 'Tipo de SR/Toras (SR_Toras)',
+        obrigatorio: false,
+        sugestoesCabecalho: ['SR_Toras', 'sr_toras', 'sr_toras_tipo', 'tipo_sr'],
+      },
+      {
         campo: 'volume_sr',
-        label: 'Volume Estéreo / SR Toras (SR_Toras)',
+        label: 'Volume Estéreo / SR Toras (numérico)',
         tipo: 'number',
         obrigatorio: false,
         sugestoesCabecalho: [
-          'SR_Toras',
-          'sr_toras',
           'volume_sr',
           'volume',
           'sr',

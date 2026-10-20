@@ -45,6 +45,7 @@ import {
   formatLitros,
   formatReferenciaOperacional,
   formatStatusOperacao,
+  isStatusCarregamento,
   statusOperacaoClass,
 } from '@/lib/historicoOperacional'
 
@@ -72,8 +73,9 @@ export default function HistoricoBaldeioPage() {
   const [volumeSr, setVolumeSr] = useState<number | ''>('')
   const [motorista, setMotorista] = useState('')
   const [numeroViagem, setNumeroViagem] = useState('')
-  const [statusBaldeio, setStatusBaldeio] =
-    useState<HistoricoBaldeio['status_baldeio']>('em_transito')
+  const [statusBaldeio, setStatusBaldeio] = useState<
+    NonNullable<HistoricoBaldeio['status_baldeio']>
+  >('em_transito')
 
   const loadData = async () => {
     setLoading(true)
@@ -123,15 +125,15 @@ export default function HistoricoBaldeioPage() {
 
   const handleOpenEdit = (item: HistoricoBaldeio) => {
     setEditingItem(item)
-    setCaminhaoBaldeioId(item.caminhao_baldeio_id)
-    setTalhaoOrigemId(item.talhao_origem_id)
-    setPilhaDestinoId(item.pilha_destino_id)
-    setDataHoraSaida(item.data_hora_saida)
+    setCaminhaoBaldeioId(item.caminhao_baldeio_id || '')
+    setTalhaoOrigemId(item.talhao_origem_id || '')
+    setPilhaDestinoId(item.pilha_destino_id || '')
+    setDataHoraSaida(item.data_hora_saida || '')
     setDataHoraChegada(item.data_hora_chegada || '')
-    setVolumeSr(item.volume_sr)
+    setVolumeSr(item.volume_sr ?? '')
     setMotorista(item.motorista || '')
     setNumeroViagem(item.numero_viagem || '')
-    setStatusBaldeio(item.status_baldeio)
+    setStatusBaldeio(item.status_baldeio || 'em_transito')
     setModalOpen(true)
   }
 
@@ -147,6 +149,7 @@ export default function HistoricoBaldeioPage() {
     setSaving(true)
     try {
       const payload: Partial<HistoricoBaldeio> = {
+        status_evento: editingItem?.status_evento || 'Carregamento',
         conversao_sr_id: conversaoVigente?.id,
         caminhao_baldeio_id: caminhaoBaldeioId,
         talhao_origem_id: talhaoOrigemId,
@@ -265,7 +268,7 @@ export default function HistoricoBaldeioPage() {
                   <th className="py-3 px-4">Status Operação</th>
                   <th className="py-3 px-4">Origem (Talhão)</th>
                   <th className="py-3 px-4">Destino (Pilha)</th>
-                  <th className="py-3 px-4 text-right">Volume SR</th>
+                  <th className="py-3 px-4 text-right">SR_Toras / Volume</th>
                   <th className="py-3 px-4 text-right">Volume m³ (Est.)</th>
                   <th className="py-3 px-4">Saída / Chegada</th>
                   <th className="py-3 px-4 text-center">Status</th>
@@ -302,7 +305,9 @@ export default function HistoricoBaldeioPage() {
                       {formatReferenciaOperacional(item.expand?.pilha_destino_id?.codigo)}
                     </td>
                     <td className="py-3 px-4 text-right font-mono font-bold text-[#1A2E1A]">
-                      {item.volume_sr.toFixed(1)} SR
+                      {item.volume_sr != null && item.volume_sr > 0
+                        ? `${item.volume_sr.toFixed(1)} SR${item.sr_toras_tipo ? ` · ${item.sr_toras_tipo}` : ''}`
+                        : item.sr_toras_tipo || '-'}
                     </td>
                     <td className="py-3 px-4 text-right font-mono text-[#5A6D5A]">
                       {item.volume_m3_estimado ? `${item.volume_m3_estimado.toFixed(2)} m³` : '-'}
@@ -330,19 +335,23 @@ export default function HistoricoBaldeioPage() {
                           ? 'Concluído'
                           : item.status_baldeio === 'em_transito'
                             ? 'Em Trânsito'
-                            : 'Cancelado'}
+                            : item.status_baldeio === 'cancelado'
+                              ? 'Cancelado'
+                              : '—'}
                       </Badge>
                     </td>
                     <td className="py-3 px-4 text-right">
                       <div className="flex items-center justify-end gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleOpenEdit(item)}
-                          className="h-7 w-7 text-[#5A6D5A] hover:text-[#1B5E20]"
-                        >
-                          <Edit2 className="w-3.5 h-3.5" />
-                        </Button>
+                        {isStatusCarregamento(item.status_evento) && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleOpenEdit(item)}
+                            className="h-7 w-7 text-[#5A6D5A] hover:text-[#1B5E20]"
+                          >
+                            <Edit2 className="w-3.5 h-3.5" />
+                          </Button>
+                        )}
                         <Button
                           variant="ghost"
                           size="icon"

@@ -46,6 +46,7 @@ import {
   formatNotaFiscal,
   formatTempoHorasMinutos,
   isStatusCarregamento,
+  isStatusDescarga,
   notaFiscalValida,
 } from '@/lib/historicoOperacional'
 
@@ -123,7 +124,11 @@ export default function RastreabilidadePage() {
 
   // 3. Histórico de Baldeio originado neste talhão (Saída do talhão com volume SR e placa)
   const baldeiosTalhao = useMemo(() => {
-    return baldeios.filter((b) => b.talhao_origem_id === talhaoSelecionadoId)
+    return baldeios.filter(
+      (b) =>
+        isStatusCarregamento(b.status_evento) &&
+        b.talhao_origem_id === talhaoSelecionadoId,
+    )
   }, [baldeios, talhaoSelecionadoId])
 
   // Identificação de pilhas de destino que receberam madeira deste talhão
@@ -142,7 +147,12 @@ export default function RastreabilidadePage() {
   // 4. Histórico de Descarga no Pátio (recebimento nas pilhas alcançadas)
   // Juntamos baldeio e descarga por placa / viagem / pilha para evidenciar divergência SR
   const descargasTalhao = useMemo(() => {
-    return descargas.filter((d) => pilhasAlcancadasIds.includes(d.pilha_destino_id))
+    return descargas.filter(
+      (d) =>
+        isStatusDescarga(d.status_evento) &&
+        Boolean(d.pilha_destino_id) &&
+        pilhasAlcancadasIds.includes(d.pilha_destino_id || ''),
+    )
   }, [descargas, pilhasAlcancadasIds])
 
   // 5. Histórico do Picador (consumo nas pilhas de origem e expedição para NF e cliente)
@@ -158,8 +168,10 @@ export default function RastreabilidadePage() {
   const comparativoCargas = useMemo(() => {
     return baldeiosTalhao.map((bal) => {
       // Procura descarga correspondente por caminhão e pilha próxima no tempo
-      const descCorrespondente = descargas.find(
+      const descCorrespondente = descargasTalhao.find(
         (d) =>
+          Boolean(bal.pilha_destino_id) &&
+          Boolean(bal.caminhao_baldeio_id) &&
           d.pilha_destino_id === bal.pilha_destino_id &&
           d.caminhao_baldeio_id === bal.caminhao_baldeio_id,
       )
@@ -181,7 +193,7 @@ export default function RastreabilidadePage() {
         temDivergencia,
       }
     })
-  }, [baldeiosTalhao, descargas])
+  }, [baldeiosTalhao, descargasTalhao])
 
   // Totais consolidados da rastreabilidade
   const totaisCadeia = useMemo(() => {
@@ -190,10 +202,12 @@ export default function RastreabilidadePage() {
       fellersTalhao.reduce((acc, f) => acc + (f.horas_trabalhadas || 0), 0) +
       skiddersTalhao.reduce((acc, s) => acc + (s.horas_trabalhadas || 0), 0)
     const totalSrBaldeado = baldeiosTalhao.reduce((acc, b) => acc + (b.volume_sr || 0), 0)
-    const totalM3Recebido = descargasTalhao.reduce(
+    const totalM3Recebido = descargasTalhao
+      .filter((d) => d.status_aceite === 'aceito')
+      .reduce(
       (acc, d) => acc + (d.volume_m3_calculado || 0),
       0,
-    )
+      )
     const totalCavacoExpedidoM3 = picadoresTalhao.reduce(
       (acc, p) => acc + (p.volume_cavaco_m3 || 0),
       0,
@@ -620,13 +634,15 @@ export default function RastreabilidadePage() {
                           {caminhao?.placa_baldeio || 'BALDEIO'}
                         </td>
                         <td className="py-2.5 px-4 font-mono text-[#5A6D5A]">
-                          {b.data_hora_saida.replace('T', ' ')}
+                          {b.data_hora_saida?.replace('T', ' ') || '—'}
                         </td>
                         <td className="py-2.5 px-4 font-bold text-[#1B5E20]">
                           {pilhaDest?.codigo || 'PILHA'}
                         </td>
                         <td className="py-2.5 px-4 text-right font-mono font-bold text-[#1A2E1A]">
-                          {b.volume_sr} SR
+                          {b.volume_sr != null && b.volume_sr > 0
+                            ? `${b.volume_sr} SR${b.sr_toras_tipo ? ` · ${b.sr_toras_tipo}` : ''}`
+                            : b.sr_toras_tipo || '—'}
                         </td>
                         <td className="py-2.5 px-4 text-right font-mono text-[#5A6D5A]">
                           {b.volume_m3_estimado ? `${b.volume_m3_estimado} m³` : '—'}
@@ -634,7 +650,7 @@ export default function RastreabilidadePage() {
                         <td className="py-2.5 px-4 text-[#5A6D5A]">{b.motorista || '—'}</td>
                         <td className="py-2.5 px-4 text-center">
                           <Badge className="bg-emerald-600 text-white text-[10px]">
-                            {b.status_baldeio}
+                            {b.status_baldeio || b.status_evento || '—'}
                           </Badge>
                         </td>
                       </tr>
@@ -685,7 +701,7 @@ export default function RastreabilidadePage() {
                     return (
                       <tr key={d.id} className="hover:bg-neutral-50/80">
                         <td className="py-2.5 px-4 font-mono">
-                          {d.data_hora_descarga.replace('T', ' ')}
+                          {d.data_hora_descarga?.replace('T', ' ') || '—'}
                         </td>
                         <td className="py-2.5 px-4 font-mono font-bold text-[#1B5E20]">
                           {pilhaDest?.codigo || 'PILHA'}
@@ -694,10 +710,14 @@ export default function RastreabilidadePage() {
                           {caminhao?.placa_baldeio || 'BALDEIO'}
                         </td>
                         <td className="py-2.5 px-4 text-right font-mono font-bold">
-                          {d.volume_sr} SR
+                          {d.volume_sr != null && d.volume_sr > 0
+                            ? `${d.volume_sr} SR${d.sr_toras_tipo ? ` · ${d.sr_toras_tipo}` : ''}`
+                            : d.sr_toras_tipo || '—'}
                         </td>
                         <td className="py-2.5 px-4 text-right font-mono font-bold text-[#1B5E20]">
-                          {d.volume_m3_calculado.toFixed(2)} m³
+                          {d.volume_m3_calculado != null && d.volume_m3_calculado > 0
+                            ? `${d.volume_m3_calculado.toFixed(2)} m³`
+                            : '—'}
                         </td>
                         <td className="py-2.5 px-4 text-right font-mono text-[#5A6D5A]">
                           {d.peso_liquido_t ? `${d.peso_liquido_t} t` : '—'}

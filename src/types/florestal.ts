@@ -273,9 +273,9 @@ export interface HistoricoSkidder {
 export interface HistoricoBaldeio {
   id: string
   conversao_sr_id?: string
-  caminhao_baldeio_id: string
-  talhao_origem_id: string
-  pilha_destino_id: string
+  caminhao_baldeio_id?: string
+  talhao_origem_id?: string
+  pilha_destino_id?: string
   fazenda_id?: string
   motivo_id?: string
   email_registro?: string
@@ -291,13 +291,14 @@ export interface HistoricoBaldeio {
   fim?: string
   app_sheet_id?: string
   ordem?: string
-  data_hora_saida: string
+  data_hora_saida?: string
   data_hora_chegada?: string
-  volume_sr: number
+  volume_sr?: number
   volume_m3_estimado?: number
+  sr_toras_tipo?: string
   motorista?: string
   numero_viagem?: string
-  status_baldeio: 'em_transito' | 'concluido' | 'cancelado'
+  status_baldeio?: 'em_transito' | 'concluido' | 'cancelado'
   extras?: Record<string, unknown>
   created?: string
   updated?: string
@@ -314,8 +315,8 @@ export interface HistoricoBaldeio {
 export interface HistoricoDescarga {
   id: string
   conversao_sr_id?: string
-  caminhao_baldeio_id: string
-  pilha_destino_id: string
+  caminhao_baldeio_id?: string
+  pilha_destino_id?: string
   fazenda_id?: string
   maquina_id?: string
   motivo_id?: string
@@ -333,9 +334,9 @@ export interface HistoricoDescarga {
   app_sheet_id?: string
   sr_toras_tipo?: string
   ordem?: string
-  data_hora_descarga: string
-  volume_sr: number
-  volume_m3_calculado: number
+  data_hora_descarga?: string
+  volume_sr?: number
+  volume_m3_calculado?: number
   peso_bruto_t?: number
   peso_tara_t?: number
   peso_liquido_t?: number
@@ -358,8 +359,8 @@ export interface HistoricoDescarga {
 export interface HistoricoPicador {
   id: string
   conversao_cavaco_id?: string
-  caminhao_id: string
-  pilha_origem_id: string
+  caminhao_id?: string
+  pilha_origem_id?: string
   fazenda_id?: string
   picador_maquina_id?: string
   picador?: string
@@ -377,8 +378,8 @@ export interface HistoricoPicador {
   fim?: string
   sr_cavaco_texto?: string
   app_sheet_id?: string
-  nota_fiscal: string
-  data_hora_expedicao: string
+  nota_fiscal?: string
+  data_hora_expedicao?: string
   volume_cavaco_m3?: number | null
   peso_cavaco_t?: number | null
   volume_tora_consumido_m3?: number | null
