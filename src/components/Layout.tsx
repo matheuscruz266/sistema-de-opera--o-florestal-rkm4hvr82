@@ -76,9 +76,6 @@ export default function Layout() {
               <span className="font-bold text-sm tracking-tight text-[#1A2E1A] block leading-tight">
                 Operação Florestal
               </span>
-              <span className="text-[10px] text-[#5A6D5A] font-medium tracking-wider uppercase block">
-                Fase 1 • Núcleos A+B+C+E
-              </span>
             </div>
           </div>
         </div>
@@ -463,12 +460,6 @@ export default function Layout() {
                 <KeyRound className="w-4 h-4 text-[#1B5E20]" />
                 <span className="text-sm">Integração & API</span>
               </div>
-              <Badge
-                variant="outline"
-                className="text-[9px] px-1.5 py-0 border-emerald-600 text-emerald-700 bg-emerald-50"
-              >
-                D2 Toledo
-              </Badge>
             </NavLink>
           </div>
         </div>
@@ -792,7 +783,7 @@ export default function Layout() {
                   to="/integracoes"
                   className="block px-3 py-1 text-xs font-semibold text-[#1B5E20]"
                 >
-                  Integração & API (D2 Toledo)
+                  Integração & API
                 </NavLink>
               </div>
             </div>

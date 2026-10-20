@@ -6,8 +6,6 @@ import {
   IntegracaoLog,
   TipoIntegracao,
   StatusIngestaoLog,
-  Pilha,
-  Caminhao,
 } from '@/types/florestal'
 import { Card, CardHeader, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -39,7 +37,6 @@ import {
   Check,
   Eye,
   EyeOff,
-  Activity,
   CheckCircle2,
   AlertTriangle,
   XCircle,
@@ -48,12 +45,8 @@ import {
   RefreshCw,
   Terminal,
   ShieldCheck,
-  Radio,
   FileJson,
-  Send,
-  Building2,
   Trash2,
-  FileSpreadsheet,
   RotateCcw,
 } from 'lucide-react'
 import { toast } from 'sonner'
@@ -116,27 +109,8 @@ export default function IntegracoesPage() {
   const [chavesVisiveis, setChavesVisiveis] = useState<Record<string, boolean>>({})
   const [chaveCopiadaId, setChaveCopiadaId] = useState<string | null>(null)
 
-  // Credencial selecionada para documentação e simulação de teste
+  // Credencial selecionada para a documentação da API
   const [credencialSelecionadaId, setCredencialSelecionadaId] = useState<string>('')
-
-  // Teste de conectividade
-  const [testandoConexao, setTestandoConexao] = useState(false)
-  const [resultadoTeste, setResultadoTeste] = useState<{
-    autenticado: boolean
-    status?: string
-    erro?: string
-    timestamp?: string
-  } | null>(null)
-
-  // Simulador de Ingestão D2
-  const [pilhasDisponiveis, setPilhasDisponiveis] = useState<Pilha[]>([])
-  const [caminhoesDisponiveis, setCaminhoesDisponiveis] = useState<Caminhao[]>([])
-  const [simNf, setSimNf] = useState('')
-  const [simVolume, setSimVolume] = useState('45.0')
-  const [simPeso, setSimPeso] = useState('14.4')
-  const [simPilhaId, setSimPilhaId] = useState('')
-  const [simCaminhaoId, setSimCaminhaoId] = useState('')
-  const [enviandoSimulacao, setEnviandoSimulacao] = useState(false)
 
   // Carregar configuração do Google Sheets
   const loadSheetsConfig = async () => {
@@ -161,9 +135,7 @@ export default function IntegracoesPage() {
       const listaSegura = Array.isArray(list) ? list : []
       setCredenciais(listaSegura)
       if (listaSegura.length > 0 && !credencialSelecionadaId) {
-        // Seleciona preferencialmente a D2 Toledo ou a primeira
-        const d2 = listaSegura.find((c) => c?.tipo === 'picador_d2')
-        setCredencialSelecionadaId(d2 ? d2.id : listaSegura[0]?.id || '')
+        setCredencialSelecionadaId(listaSegura[0]?.id || '')
       }
     } catch (err: any) {
       console.error(err)
@@ -193,25 +165,10 @@ export default function IntegracoesPage() {
     }
   }
 
-  const loadAuxData = async () => {
-    try {
-      const [pilhas, caminhoes] = await Promise.all([
-        apiService.getPilhas(),
-        apiService.getCaminhoes(),
-      ])
-      setPilhasDisponiveis(pilhas)
-      setCaminhoesDisponiveis(caminhoes)
-      if (pilhas.length > 0) setSimPilhaId(pilhas[0].id)
-      if (caminhoes.length > 0) setSimCaminhaoId(caminhoes[0].id)
-    } catch {
-      /* intentionally ignored */
-    }
-  }
-
   useEffect(() => {
     const init = async () => {
       setLoading(true)
-      await Promise.all([loadSheetsConfig(), loadCredenciais(), loadLogs(1), loadAuxData()])
+      await Promise.all([loadSheetsConfig(), loadCredenciais(), loadLogs(1)])
       setLoading(false)
     }
     init()
@@ -226,118 +183,6 @@ export default function IntegracoesPage() {
     if (!Array.isArray(credenciais) || credenciais.length === 0) return null
     return credenciais.find((c) => c?.id === credencialSelecionadaId) || credenciais[0] || null
   }, [credenciais, credencialSelecionadaId])
-
-  // Análise de situação da integração D2 (Picador BRF Toledo)
-  const situacaoD2 = useMemo(() => {
-    const credD2 = credenciais?.find((c) => c?.tipo === 'picador_d2')
-    const sheetsAtivo = Boolean(sheetsConfig?.is_ativa)
-
-    // Prioriza o status da Planilha Google Sheets se configurada
-    if (sheetsConfig) {
-      if (!sheetsConfig?.is_ativa) {
-        return {
-          status: 'inativa',
-          label: 'Importador Sheets Desativado',
-          badgeClass: 'bg-neutral-200 text-neutral-700 border-neutral-400',
-          descricao: 'O importador Google Sheets / AppSheet está desativado.',
-          tempoUso: sheetsConfig?.ultima_sincronizacao || null,
-        }
-      }
-      if (sheetsConfig?.ultima_sincronizacao) {
-        const idAbreviado = sheetsConfig?.spreadsheet_id
-          ? `${sheetsConfig.spreadsheet_id.slice(0, 12)}...`
-          : '—'
-        return {
-          status: sheetsConfig?.ultimo_status === 'erro' ? 'erros_recentes' : 'ok',
-          label:
-            sheetsConfig?.ultimo_status === 'erro'
-              ? 'Atenção — Erro Importador'
-              : 'Importador Multi-Base Ativo',
-          badgeClass:
-            sheetsConfig?.ultimo_status === 'erro'
-              ? 'bg-rose-100 text-rose-800 border-rose-300'
-              : 'bg-emerald-100 text-emerald-800 border-emerald-300',
-          descricao: `Planilha Google ID: ${idAbreviado} (${sheetsConfig?.linhas_ingeridas_total || 0} registros ingeridos).`,
-          tempoUso: sheetsConfig?.ultima_sincronizacao,
-        }
-      }
-    }
-
-    if (!credD2) {
-      return {
-        status: sheetsAtivo ? 'ok' : 'nao_configurada',
-        label: sheetsAtivo ? 'Importador Multi-Base Ativo' : 'Aguardando Configuração',
-        badgeClass: sheetsAtivo
-          ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
-          : 'bg-neutral-100 text-neutral-600 border-neutral-300',
-        descricao: sheetsAtivo
-          ? 'Importador Multi-Base Google Sheets ativo para as 14 bases do sistema.'
-          : 'Configure a planilha Google Sheets acima para leitura e importação das bases florestais.',
-        tempoUso: null,
-      }
-    }
-
-    if (!credD2?.is_ativa) {
-      return {
-        status: 'inativa',
-        label: 'Integração Desativada',
-        badgeClass: 'bg-neutral-200 text-neutral-700 border-neutral-400',
-        descricao: 'A chave de API está desativada no sistema.',
-        tempoUso: credD2.ultimo_uso,
-      }
-    }
-
-    // Busca o log mais recente associado à credencial D2 ou com origem contendo "D2" ou "Picador"
-    const ultimoLog = logs.find(
-      (l) =>
-        l.credencial_id === credD2.id ||
-        l.origem_nome.toLowerCase().includes('d2') ||
-        l.origem_nome.toLowerCase().includes('toledo'),
-    )
-
-    if (!ultimoLog && !credD2.ultimo_uso) {
-      return {
-        status: 'nunca_conectou',
-        label: 'Aguardando 1ª Conexão',
-        badgeClass: 'bg-amber-100 text-amber-800 border-amber-300',
-        descricao: 'Aguardando o primeiro envio de dados do picador Toledo via API.',
-        tempoUso: null,
-      }
-    }
-
-    if (ultimoLog?.status === 'erro' || ultimoLog?.status === 'rejeitado') {
-      return {
-        status: 'erros_recentes',
-        label: 'Atenção — Erros Recentes',
-        badgeClass: 'bg-rose-100 text-rose-800 border-rose-300',
-        descricao: `Último envio rejeitado: ${ultimoLog.mensagem_erro || 'Falha de validação'}`,
-        tempoUso: ultimoLog.timestamp_evento || credD2.ultimo_uso,
-      }
-    }
-
-    // Sucesso ou parcial recente
-    const dataRef = new Date(ultimoLog?.timestamp_evento || credD2.ultimo_uso || new Date())
-    const agora = new Date()
-    const diffHoras = Math.abs(agora.getTime() - dataRef.getTime()) / 36e5
-
-    if (diffHoras > 48) {
-      return {
-        status: 'inativo_recente',
-        label: 'Sem envios > 48h',
-        badgeClass: 'bg-amber-100 text-amber-800 border-amber-300',
-        descricao: `Último recebimento com sucesso foi há ${Math.floor(diffHoras / 24)} dia(s).`,
-        tempoUso: dataRef.toISOString(),
-      }
-    }
-
-    return {
-      status: 'ok',
-      label: 'Conectado & Operante',
-      badgeClass: 'bg-emerald-100 text-emerald-800 border-emerald-300',
-      descricao: 'Endpoint respondendo com sucesso e gravando expedições no estoque.',
-      tempoUso: dataRef.toISOString(),
-    }
-  }, [credenciais, logs])
 
   // Ações de Credencial
   const handleToggleAtiva = async (cred: IntegracaoCredencial) => {
@@ -436,84 +281,6 @@ export default function IntegracoesPage() {
     }
   }
 
-  // Testar conectividade do endpoint
-  const handleTestarConectividade = async () => {
-    if (!credencialAtiva) {
-      toast.error('Nenhuma credencial selecionada para teste.')
-      return
-    }
-    setTestandoConexao(true)
-    setResultadoTeste(null)
-    try {
-      const res = await apiService.testarConectividadeApiKey(credencialAtiva.api_key)
-      setResultadoTeste({
-        autenticado: res.autenticado,
-        status: res.status,
-        erro: res.erro,
-        timestamp: res.servidor_timestamp || new Date().toISOString(),
-      })
-      if (res.autenticado) {
-        toast.success(`Chave autenticada com sucesso! Endpoint online.`)
-      } else {
-        toast.error(`Falha na autenticação: ${res.erro}`)
-      }
-    } catch (err: any) {
-      setResultadoTeste({
-        autenticado: false,
-        erro: err.message || 'Erro de comunicação',
-      })
-      toast.error('Erro ao testar endpoint')
-    } finally {
-      setTestandoConexao(false)
-    }
-  }
-
-  // Simular Envio D2
-  const handleEnviarSimulacaoD2 = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!credencialAtiva) {
-      toast.error('Selecione uma credencial de integração ativa.')
-      return
-    }
-    const vol = Number(simVolume)
-    if (isNaN(vol) || vol <= 0) {
-      toast.error('Volume de cavaco inválido.')
-      return
-    }
-
-    const nfFinal = simNf.trim() || `NF-${Math.floor(100000 + Math.random() * 900000)}-D2`
-
-    setEnviandoSimulacao(true)
-    try {
-      const payload: any = {
-        nota_fiscal: nfFinal,
-        data_hora_expedicao: new Date().toISOString(),
-        volume_cavaco_m3: vol,
-        peso_cavaco_t: Number(simPeso) || Number((vol * 0.32).toFixed(2)),
-        volume_tora_consumido_m3: Number((vol * 0.4).toFixed(2)),
-        cliente: 'BRF Toledo — Fábrica de Cavaco',
-        operador_nome: user?.name || 'Operador D2 Toledo',
-      }
-      if (simPilhaId) payload.pilha_origem_id = simPilhaId
-      if (simCaminhaoId) payload.caminhao_id = simCaminhaoId
-
-      const res = await apiService.enviarIngestaoD2(credencialAtiva.api_key, payload)
-      if (res.sucesso) {
-        toast.success(
-          `Dados enviados com sucesso! NF: ${nfFinal} (${vol} m³ de cavaco registrados).`,
-        )
-        setSimNf('')
-        await Promise.all([loadLogs(1), loadCredenciais()])
-      } else {
-        toast.error(`Falha no envio: ${res.mensagem}`)
-      }
-    } catch (err: any) {
-      toast.error(err?.data?.erro || err?.message || 'Erro ao enviar dados para a API D2')
-    } finally {
-      setEnviandoSimulacao(false)
-    }
-  }
-
   // Executar limpeza exclusiva do histórico de ingestão
   const handleExecutarLimparHistorico = async () => {
     if (!isAdmin) {
@@ -568,7 +335,7 @@ export default function IntegracoesPage() {
         )
         setModalPurgeOpen(false)
         setConfirmacaoPurgeTexto('')
-        await Promise.all([loadLogs(1), loadSheetsConfig(), loadAuxData()])
+        await Promise.all([loadLogs(1), loadSheetsConfig()])
       } else {
         toast.error(res.erro || 'Falha ao executar limpeza da base de dados.')
       }
@@ -630,7 +397,7 @@ export default function IntegracoesPage() {
   }
 
   // Exemplos de curl e código para o endpoint de ingestão
-  const apiKeyExemplo = credencialAtiva ? credencialAtiva.api_key : 'sof_live_d2_toledo_sua_chave'
+  const apiKeyExemplo = credencialAtiva ? credencialAtiva.api_key : 'sua_chave_api'
   const curlExemplo = `curl -X POST "${backendBaseUrl}/backend/v1/ingestao/d2" \\
   -H "Content-Type: application/json" \\
   -H "X-API-Key: ${apiKeyExemplo}" \\
@@ -640,9 +407,9 @@ export default function IntegracoesPage() {
     "volume_cavaco_m3": 45.0,
     "peso_cavaco_t": 14.4,
     "volume_tora_consumido_m3": 18.0,
-    "cliente": "BRF Toledo",
+    "cliente": "Unidade de processamento",
     "umidade_perc": 42.5,
-    "operador_nome": "Operador Linha D2"
+    "operador_nome": "Operador"
   }'`
 
   const payloadExemploJson = `{
@@ -651,11 +418,11 @@ export default function IntegracoesPage() {
   "volume_cavaco_m3": 45.0,
   "peso_cavaco_t": 14.4,
   "volume_tora_consumido_m3": 18.0,
-  "cliente": "BRF Toledo",
+  "cliente": "Unidade de processamento",
   "umidade_perc": 42.5,
   "pilha_codigo": "PIL-01",
   "placa": "ABC1D23",
-  "operador_nome": "Operador Picador D2"
+  "operador_nome": "Operador"
 }`
 
   const respostaExemploJson = `{
@@ -691,8 +458,7 @@ export default function IntegracoesPage() {
             </h1>
           </div>
           <p className="text-sm text-[#5A6D5A] mt-1">
-            Gestão de chaves de API, monitoramento de conectividade da Dashboard D2 (Picador BRF
-            Toledo) e auditoria de eventos recebidos.
+            Gestão de chaves de API, importação de planilhas e auditoria de eventos recebidos.
           </p>
         </div>
 
@@ -723,7 +489,7 @@ export default function IntegracoesPage() {
         </div>
       </div>
 
-      {/* SEÇÃO 1: CONEXÃO GOOGLE SHEETS D2 (PICADOR BRF TOLEDO) */}
+      {/* Importação e sincronização via Google Sheets */}
       <GoogleSheetsD2Section
         config={sheetsConfig}
         isConfigLoaded={sheetsConfigLoaded}
@@ -737,99 +503,7 @@ export default function IntegracoesPage() {
         }}
       />
 
-      {/* PAINEL: SITUAÇÃO DA INTEGRAÇÃO D2 (PICADOR BRF TOLEDO) */}
       <Card className="border-[#DDE4DE] shadow-xs overflow-hidden">
-        <div className="p-4 sm:p-5 bg-gradient-to-r from-emerald-900 to-[#1B5E20] text-white">
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-            <div className="space-y-1.5">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-200">
-                  Painel de Conectividade Externa
-                </span>
-                <span className="text-emerald-300">•</span>
-                <span className="text-[11px] text-emerald-200">
-                  Automação Picador D2 BRF Toledo
-                </span>
-              </div>
-              <h2 className="text-xl font-bold flex items-center gap-2.5">
-                <Radio
-                  className={`w-5 h-5 ${
-                    situacaoD2?.status === 'ok'
-                      ? 'text-emerald-300 animate-pulse'
-                      : situacaoD2?.status === 'erros_recentes'
-                        ? 'text-rose-400'
-                        : 'text-amber-300'
-                  }`}
-                />
-                Status da Integração & Importador: {situacaoD2?.label || 'Ativo'}
-              </h2>
-              <p className="text-xs text-emerald-100 max-w-2xl leading-relaxed">
-                {situacaoD2?.descricao || 'Integração pronta para importação de dados.'}
-              </p>
-            </div>
-
-            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-              <div className="bg-white/10 backdrop-blur-xs rounded-lg px-3 py-2 border border-white/20 text-xs">
-                <span className="text-[10px] text-emerald-200 block uppercase font-medium">
-                  Última Atividade
-                </span>
-                <span className="font-mono font-semibold">
-                  {situacaoD2?.tempoUso ? formatDataHora(situacaoD2.tempoUso) : 'Nenhum envio'}
-                </span>
-              </div>
-
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={handleTestarConectividade}
-                disabled={testandoConexao || !credencialAtiva}
-                className="bg-white text-[#1B5E20] hover:bg-emerald-50 font-semibold shadow-xs text-xs h-9"
-              >
-                {testandoConexao ? (
-                  <>
-                    <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
-                    Testando...
-                  </>
-                ) : (
-                  <>
-                    <Activity className="w-3.5 h-3.5 mr-1.5" />
-                    Testar Conexão
-                  </>
-                )}
-              </Button>
-            </div>
-          </div>
-        </div>
-
-        {/* FEEDBACK DO TESTE DE CONECTIVIDADE */}
-        {resultadoTeste && (
-          <div
-            className={`p-3.5 border-b text-xs flex items-center justify-between gap-3 ${
-              resultadoTeste.autenticado
-                ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
-                : 'bg-rose-50 border-rose-200 text-rose-900'
-            }`}
-          >
-            <div className="flex items-center gap-2">
-              {resultadoTeste.autenticado ? (
-                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-              ) : (
-                <XCircle className="w-4 h-4 text-rose-600 shrink-0" />
-              )}
-              <span>
-                <strong>{resultadoTeste.autenticado ? 'Sucesso:' : 'Falha:'}</strong>{' '}
-                {resultadoTeste.autenticado
-                  ? `Endpoint /backend/v1/ingestao/status respondeu 200 OK. Chave de API "${credencialAtiva?.nome}" é válida.`
-                  : resultadoTeste.erro}
-              </span>
-            </div>
-            <span className="font-mono text-[11px] opacity-75 shrink-0">
-              {formatDataHora(resultadoTeste.timestamp)}
-            </span>
-          </div>
-        )}
-
-        {/* CARDS RESUMO */}
         <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-y md:divide-y-0 divide-[#DDE4DE] bg-neutral-50/50 text-xs">
           <div className="p-4">
             <span className="text-[11px] font-medium text-[#5A6D5A] uppercase block">
@@ -895,14 +569,7 @@ export default function IntegracoesPage() {
             className="data-[state=active]:bg-[#1B5E20] data-[state=active]:text-white text-xs font-semibold py-2 px-3.5"
           >
             <Code2 className="w-3.5 h-3.5 mr-1.5" />
-            Documentação da API & Guia D2
-          </TabsTrigger>
-          <TabsTrigger
-            value="simulador"
-            className="data-[state=active]:bg-[#1B5E20] data-[state=active]:text-white text-xs font-semibold py-2 px-3.5"
-          >
-            <Terminal className="w-3.5 h-3.5 mr-1.5" />
-            Simulador de Envio (D2)
+            Documentação da API
           </TabsTrigger>
         </TabsList>
 
@@ -964,11 +631,6 @@ export default function IntegracoesPage() {
                           <td className="py-3.5 px-4 font-semibold text-[#1A2E1A]">
                             <div className="flex items-center gap-2">
                               <span>{cred.nome}</span>
-                              {cred.tipo === 'picador_d2' && (
-                                <Badge className="bg-[#1B5E20] text-white text-[9px] px-1.5 py-0">
-                                  D2 Toledo
-                                </Badge>
-                              )}
                             </div>
                             {cred.descricao && (
                               <span className="text-[11px] text-[#5A6D5A] font-normal block mt-0.5 line-clamp-1">
@@ -982,7 +644,9 @@ export default function IntegracoesPage() {
                               variant="outline"
                               className="text-[10px] uppercase font-mono font-semibold"
                             >
-                              {cred.tipo}
+                              {cred.tipo === 'picador_d2'
+                                ? 'Integração de Picador'
+                                : cred.tipo.replaceAll('_', ' ')}
                             </Badge>
                           </td>
 
@@ -1283,67 +947,15 @@ export default function IntegracoesPage() {
           <Card className="border-[#DDE4DE] shadow-xs">
             <CardHeader className="p-4 border-b border-[#DDE4DE] bg-neutral-50/50">
               <span className="text-xs font-semibold text-[#1A2E1A] block">
-                Guia Técnico de Integração: Leitura Google Sheets (D2 Toledo) & Ingestão REST
+                Guia Técnico de Integração via Google Sheets e API REST
               </span>
               <span className="text-[11px] text-[#5A6D5A]">
-                Os dados de produção do Picador D2 BRF Toledo são{' '}
-                <strong>PUXADOS diretamente da planilha Google Sheets</strong> via Conta de Serviço.
-                O endpoint REST continua ativo para contingência ou para o aplicativo móvel offline
-                de campo.
+                A importação de dados do Google Sheets usa uma conta de serviço. O endpoint REST
+                também está disponível para integrações externas e aplicativos de campo.
               </span>
             </CardHeader>
 
             <CardContent className="p-4 sm:p-6 space-y-6">
-              {/* FLUXO GOOGLE SHEETS D2 EXPLICADO */}
-              <div className="p-4 bg-emerald-50/80 border border-emerald-300 rounded-xl space-y-3">
-                <div className="flex items-center gap-2">
-                  <div className="w-7 h-7 rounded-lg bg-[#1B5E20] text-white flex items-center justify-center">
-                    <FileSpreadsheet className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <h3 className="text-xs font-bold uppercase tracking-wider text-[#1B5E20]">
-                      Fluxo Real D2 — Leitura Direta de Planilha Google Sheets
-                    </h3>
-                    <p className="text-[11px] text-[#3D523D]">
-                      Alimentação contínua do Picador BRF Toledo sem necessidade de programar
-                      chamadas de API externas
-                    </p>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs text-[#1A2E1A] pt-1">
-                  <div className="p-3 bg-white rounded-lg border border-emerald-200 shadow-2xs space-y-1">
-                    <span className="text-[10px] font-bold uppercase text-[#1B5E20] block">
-                      Passo 1 • Planilha Compartilhada
-                    </span>
-                    <p className="text-[11px] text-[#5A6D5A] leading-relaxed">
-                      A planilha do picador é compartilhada como Leitor com o e-mail da Conta de
-                      Serviço do Google Cloud gerado para a biotecnologia.
-                    </p>
-                  </div>
-
-                  <div className="p-3 bg-white rounded-lg border border-emerald-200 shadow-2xs space-y-1">
-                    <span className="text-[10px] font-bold uppercase text-[#1B5E20] block">
-                      Passo 2 • JWT OAuth2 & Backend
-                    </span>
-                    <p className="text-[11px] text-[#5A6D5A] leading-relaxed">
-                      Ao clicar em "Testar conexão" ou "Sincronizar agora" (e pelo cron a cada 15
-                      min), o backend autentica via JWT RS256 e lê o intervalo especificado.
-                    </p>
-                  </div>
-
-                  <div className="p-3 bg-white rounded-lg border border-emerald-200 shadow-2xs space-y-1">
-                    <span className="text-[10px] font-bold uppercase text-[#1B5E20] block">
-                      Passo 3 • Ingestão & Estoque
-                    </span>
-                    <p className="text-[11px] text-[#5A6D5A] leading-relaxed">
-                      Cada linha vira uma expedição no histórico do picador. Linhas com nota/ticket
-                      já registrados são preservadas por idempotência.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
               {/* ENDPOINT INFO */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 <div className="p-3 bg-neutral-50 rounded-lg border border-[#DDE4DE]">
@@ -1357,7 +969,7 @@ export default function IntegracoesPage() {
 
                 <div className="p-3 bg-neutral-50 rounded-lg border border-[#DDE4DE] md:col-span-2">
                   <span className="text-[10px] text-[#5A6D5A] font-bold uppercase block">
-                    URL do Endpoint de Ingestão (D2 Toledo)
+                    URL do Endpoint de Ingestão
                   </span>
                   <div className="flex items-center justify-between gap-2 mt-0.5">
                     <span className="font-mono text-xs text-[#1A2E1A] truncate select-all">
@@ -1489,8 +1101,8 @@ export default function IntegracoesPage() {
                     , evitando duplicidade no volume do picador.
                   </li>
                   <li>
-                    <strong>Conexão Google Sheets vs API REST:</strong> A leitura da planilha é o
-                    canal oficial de alimentação contínua da D2 Toledo. O endpoint POST{' '}
+                    <strong>Google Sheets e API REST:</strong> A leitura da planilha é realizada
+                    pelo importador. O endpoint POST{' '}
                     <code className="text-emerald-800 font-mono">/backend/v1/ingestao/d2</code>{' '}
                     permanece 100% ativo para o aplicativo offline de campo.
                   </li>
@@ -1505,129 +1117,7 @@ export default function IntegracoesPage() {
           </Card>
         </TabsContent>
 
-        {/* TAB 4: SIMULADOR DE ENVIO D2 */}
-        <TabsContent value="simulador" className="space-y-4 m-0">
-          <Card className="border-[#DDE4DE] shadow-xs">
-            <CardHeader className="p-4 border-b border-[#DDE4DE] bg-neutral-50/50">
-              <span className="text-xs font-semibold text-[#1A2E1A] block">
-                Simulador de Expedição do Picador D2
-              </span>
-              <span className="text-[11px] text-[#5A6D5A]">
-                Simule um disparo direto do equipamento para verificar a resposta do endpoint,
-                consumo de estoque da pilha e registro em tempo real no log.
-              </span>
-            </CardHeader>
-
-            <CardContent className="p-4 sm:p-6">
-              <form onSubmit={handleEnviarSimulacaoD2} className="space-y-4 max-w-xl">
-                <div className="space-y-1">
-                  <Label className="text-xs font-semibold">Credencial de Envio</Label>
-                  <Select
-                    value={credencialSelecionadaId}
-                    onValueChange={setCredencialSelecionadaId}
-                  >
-                    <SelectTrigger className="h-9 text-xs">
-                      <SelectValue placeholder="Selecione a chave de API" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {(credenciais || []).map((c) => (
-                        <SelectItem key={c.id} value={c.id}>
-                          {c.nome} ({c?.is_ativa ? 'Ativa' : 'Inativa'})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <Label className="text-xs font-semibold">Nota Fiscal / Ticket</Label>
-                    <Input
-                      placeholder="Deixe em branco para auto-gerar"
-                      value={simNf}
-                      onChange={(e) => setSimNf(e.target.value)}
-                      className="h-9 font-mono"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs font-semibold">Volume de Cavaco (m³) *</Label>
-                    <Input
-                      type="number"
-                      step="0.1"
-                      value={simVolume}
-                      onChange={(e) => setSimVolume(e.target.value)}
-                      className="h-9 font-mono font-bold"
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <Label className="text-xs">Peso Estimado (t)</Label>
-                    <Input
-                      type="number"
-                      step="0.1"
-                      value={simPeso}
-                      onChange={(e) => setSimPeso(e.target.value)}
-                      className="h-9 font-mono"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs">Pilha de Origem (Consumo)</Label>
-                    <Select value={simPilhaId} onValueChange={setSimPilhaId}>
-                      <SelectTrigger className="h-9 text-xs">
-                        <SelectValue placeholder="Selecione a pilha" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {pilhasDisponiveis.map((p) => (
-                          <SelectItem key={p.id} value={p.id}>
-                            [{p.codigo}] {p.nome || 'Pilha'} ({p.volume_atual_m3 || 0} m³)
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                <div className="space-y-1">
-                  <Label className="text-xs">Caminhão Rodoviário</Label>
-                  <Select value={simCaminhaoId} onValueChange={setSimCaminhaoId}>
-                    <SelectTrigger className="h-9 text-xs">
-                      <SelectValue placeholder="Selecione o caminhão" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {caminhoesDisponiveis.map((c) => (
-                        <SelectItem key={c.id} value={c.id}>
-                          {c.placa} — {c.modelo}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <Button
-                  type="submit"
-                  disabled={enviandoSimulacao}
-                  className="bg-[#1B5E20] hover:bg-[#14521A] text-white w-full h-9 font-semibold text-xs shadow-xs"
-                >
-                  {enviandoSimulacao ? (
-                    <>
-                      <Loader2 className="w-3.5 h-3.5 mr-2 animate-spin" />
-                      Enviando para o Endpoint de Ingestão...
-                    </>
-                  ) : (
-                    <>
-                      <Send className="w-3.5 h-3.5 mr-2" />
-                      Disparar Carga de Teste D2 Toledo
-                    </>
-                  )}
-                </Button>
-              </form>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+        </Tabs>
 
       {/* MODAL 1: CRIAR NOVA CHAVE */}
       <Dialog open={modalNovaChaveOpen} onOpenChange={setModalNovaChaveOpen}>
@@ -1647,7 +1137,7 @@ export default function IntegracoesPage() {
             <div className="space-y-1">
               <Label className="text-xs font-semibold">Identificação da Integração *</Label>
               <Input
-                placeholder="Ex: D2 — Picador BRF Toledo"
+                placeholder="Ex: Integração do picador"
                 value={novoNome}
                 onChange={(e) => setNovoNome(e.target.value)}
                 className="h-9"
@@ -1662,7 +1152,7 @@ export default function IntegracoesPage() {
                   <SelectValue placeholder="Selecione o tipo" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="picador_d2">Picador D2 (BRF Toledo)</SelectItem>
+                  <SelectItem value="picador_d2">Integração de Picador</SelectItem>
                   <SelectItem value="app_campo">App de Campo Offline</SelectItem>
                   <SelectItem value="balanca_terceiros">Balança de Terceiros</SelectItem>
                   <SelectItem value="outro">Outro Sistema Externo</SelectItem>
@@ -1782,7 +1272,7 @@ export default function IntegracoesPage() {
               Esta ação apaga <strong>
                 apenas o registro de eventos/chamadas de ingestão
               </strong> e
-              zera os contadores de sincronização da integração D2, preservando todos os dados
+              zera os contadores de sincronização do importador, preservando todos os dados
               importados.
             </DialogDescription>
           </DialogHeader>
@@ -1799,8 +1289,8 @@ export default function IntegracoesPage() {
                   ingestão ({totalLogs} eventos registrados).
                 </li>
                 <li>
-                  <strong>Contador de ingestão:</strong> Contagem de linhas ingeridas da integração
-                  D2 Google Sheets volta a zero.
+                  <strong>Contador de ingestão:</strong> A contagem de linhas ingeridas pela
+                  planilha configurada volta a zero.
                 </li>
               </ul>
             </div>
@@ -1821,7 +1311,7 @@ export default function IntegracoesPage() {
                 </li>
                 <li>
                   <strong>Chaves de API & Conexões:</strong> Credenciais de API e a conexão Google
-                  Sheets D2 permanecem ativas e funcionais.
+                  Sheets permanecem ativas e funcionais.
                 </li>
               </ul>
             </div>
@@ -1933,7 +1423,7 @@ export default function IntegracoesPage() {
                   <strong>Chaves de API:</strong> Credenciais de integrações parceiras preservadas.
                 </li>
                 <li>
-                  <strong>Conexão Google Sheets:</strong> Credencial de serviço, planilha ID da D2 e
+                  <strong>Conexão Google Sheets:</strong> Credencial de serviço, planilha e
                   mapeamentos de abas preservados para você reimportar dados reais a qualquer
                   momento.
                 </li>

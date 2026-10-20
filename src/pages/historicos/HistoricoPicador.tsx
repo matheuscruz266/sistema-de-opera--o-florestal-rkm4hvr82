@@ -33,6 +33,11 @@ import {
 import { Flame, Plus, Search, Edit2, Trash2, Loader2, FileText } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuth } from '@/context/AuthContext'
+import {
+  formatHorimetro,
+  formatLitros,
+  formatStatusOperacao,
+} from '@/lib/historicoOperacional'
 
 export default function HistoricoPicadorPage() {
   const { user } = useAuth()
@@ -249,6 +254,10 @@ export default function HistoricoPicadorPage() {
                   <th className="py-3 px-4">Nota Fiscal</th>
                   <th className="py-3 px-4">Data/Hora</th>
                   <th className="py-3 px-4">Caminhão / Placa</th>
+                  <th className="py-3 px-4">Máquina (P. Ordens)</th>
+                  <th className="py-3 px-4 text-right">Horímetro</th>
+                  <th className="py-3 px-4 text-right">Litragem</th>
+                  <th className="py-3 px-4">Status Operação</th>
                   <th className="py-3 px-4">Pilha Origem</th>
                   <th className="py-3 px-4 text-right">Cavaco (m³)</th>
                   <th className="py-3 px-4 text-right">Peso Cavaco (t)</th>
@@ -271,6 +280,14 @@ export default function HistoricoPicadorPage() {
                     <td className="py-3 px-4 font-mono font-semibold text-[#1A2E1A]">
                       {item.expand?.caminhao_id?.placa || '-'}
                     </td>
+                    <td className="py-3 px-4 font-mono font-semibold text-[#1A2E1A]">
+                      {item.expand?.picador_maquina_id?.p_ordens || '—'}
+                    </td>
+                    <td className="py-3 px-4 text-right font-mono">
+                      {formatHorimetro(item.horimetro)}
+                    </td>
+                    <td className="py-3 px-4 text-right font-mono">{formatLitros(item)}</td>
+                    <td className="py-3 px-4 text-[#5A6D5A]">{formatStatusOperacao(item)}</td>
                     <td className="py-3 px-4 font-mono text-[#1A2E1A]">
                       {item.expand?.pilha_origem_id?.codigo || '-'}
                     </td>

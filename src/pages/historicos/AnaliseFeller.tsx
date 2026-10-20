@@ -1,4 +1,6 @@
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { Map as MapLibre, Marker, NavigationControl, Popup, type LngLatBoundsLike } from 'maplibre-gl'
+import 'maplibre-gl/dist/maplibre-gl.css'
 import { Link } from 'react-router-dom'
 import {
   Activity,
@@ -183,11 +185,7 @@ export default function AnaliseFellerPage() {
   )
 
   useEffect(() => {
-    if (dateOptions.length > 0 && !dateOptions.includes(selectedDate)) {
-      setSelectedDate(dateOptions[0])
-    } else if (dateOptions.length === 0 && selectedDate) {
-      setSelectedDate('')
-    }
+    if (!selectedDate && dateOptions.length > 0) setSelectedDate(dateOptions[0])
   }, [dateOptions, selectedDate])
 
   const dayRecords = useMemo(
@@ -330,23 +328,17 @@ export default function AnaliseFellerPage() {
             <label className="sr-only" htmlFor="feller-date">
               Dia da operação
             </label>
-            <Select
-              value={selectedDate}
-              onValueChange={setSelectedDate}
-              disabled={!dateOptions.length}
-            >
-              <SelectTrigger id="feller-date" className="h-9 border-[#E4DFD1] bg-[#FFFDF8] text-xs">
-                <CalendarDays className="mr-2 h-3.5 w-3.5 text-[#7A7260]" />
-                <SelectValue placeholder="Selecione um dia" />
-              </SelectTrigger>
-              <SelectContent>
-                {dateOptions.map((date) => (
-                  <SelectItem key={date} value={date}>
-                    {dateLabel(date, { day: '2-digit', month: 'short', year: 'numeric' })}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="relative">
+              <CalendarDays className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#7A7260]" />
+              <input
+                id="feller-date"
+                type="date"
+                aria-label="Dia da operação"
+                value={selectedDate}
+                onChange={(event) => setSelectedDate(event.target.value)}
+                className="h-9 w-full rounded-md border border-[#E4DFD1] bg-[#FFFDF8] pl-9 pr-2 text-xs text-[#262117] outline-none focus-visible:ring-2 focus-visible:ring-[#1B5E20]"
+              />
+            </div>
           </div>
           <div className="w-[132px]">
             <label className="sr-only" htmlFor="feller-talho">
@@ -501,7 +493,7 @@ export default function AnaliseFellerPage() {
                   <MapPin className="h-4 w-4 text-[#3E6B49]" />
                   Mapa do talhão · eventos registrados
                 </CardTitle>
-                <p className="text-[11px] text-[#7A7260]">Trajeto relativo · {dayLabel}</p>
+                <p className="text-[11px] text-[#7A7260]">OpenFreeMap · {dayLabel}</p>
               </CardHeader>
               <CardContent>
                 <EventMap records={dayRecords} />
@@ -762,121 +754,81 @@ function KpiCard({
 }
 
 function EventMap({ records }: { records: HistoricoFeller[] }) {
-  const points = records
-    .map((record) => ({ record, coordinates: parseLocation(record.localizacao) }))
-    .filter(
-      (item): item is { record: HistoricoFeller; coordinates: Coordinates } =>
-        item.coordinates !== null,
-    )
+  const mapContainer = useRef<HTMLDivElement>(null)
+  const points = useMemo(
+    () =>
+      records
+        .map((record) => ({ record, coordinates: parseLocation(record.localizacao) }))
+        .filter(
+          (point): point is { record: HistoricoFeller; coordinates: Coordinates } =>
+            point.coordinates !== null,
+        ),
+    [records],
+  )
 
-  if (points.length === 0) {
-    return (
-      <div className="relative flex min-h-[280px] items-center justify-center overflow-hidden rounded-lg border border-[#E4DFD1] bg-[#203A29] px-4 text-center">
-        <svg
-          className="absolute inset-0 h-full w-full opacity-30"
-          viewBox="0 0 720 300"
-          preserveAspectRatio="none"
-          aria-hidden="true"
-        >
-          <defs>
-            <pattern
-              id="feller-empty-map-grid"
-              width="36"
-              height="36"
-              patternUnits="userSpaceOnUse"
-            >
-              <path d="M 36 0 L 0 0 0 36" fill="none" stroke="#C7D1BC" strokeOpacity=".35" />
-            </pattern>
-          </defs>
-          <rect width="720" height="300" fill="url(#feller-empty-map-grid)" />
-        </svg>
-        <div className="relative max-w-sm rounded-md bg-[#203A29]/90 px-4 py-3 text-xs text-[#E9E7D8]">
-          Nenhuma localização válida registrada para este dia. Os pontos aparecerão aqui quando
-          houver coordenadas nos apontamentos.
-        </div>
-      </div>
-    )
-  }
+  useEffect(() => {
+    if (!mapContainer.current) return
 
-  const minLat = Math.min(...points.map((point) => point.coordinates.lat))
-  const maxLat = Math.max(...points.map((point) => point.coordinates.lat))
-  const minLng = Math.min(...points.map((point) => point.coordinates.lng))
-  const maxLng = Math.max(...points.map((point) => point.coordinates.lng))
-  const latPad = Math.max((maxLat - minLat) * 0.25, 0.0005)
-  const lngPad = Math.max((maxLng - minLng) * 0.25, 0.0005)
-  const width = 720
-  const height = 300
-  const pad = 32
-  const project = ({ lat, lng }: Coordinates) => ({
-    x: pad + ((lng - (minLng - lngPad)) / (maxLng - minLng + lngPad * 2)) * (width - pad * 2),
-    y:
-      height -
-      pad -
-      ((lat - (minLat - latPad)) / (maxLat - minLat + latPad * 2)) * (height - pad * 2),
-  })
-  const projected = points.map((point) => project(point.coordinates))
+    const map = new MapLibre({
+      container: mapContainer.current,
+      style: 'https://tiles.openfreemap.org/styles/liberty',
+      center: [-46, -19],
+      zoom: 5,
+    })
+    map.addControl(new NavigationControl({ showCompass: false }), 'top-right')
+
+    const bounds = new MapLibre.LngLatBounds()
+    points.forEach(({ record, coordinates }) => {
+      const config = EVENT_STATUS[eventStatus(record)]
+      const markerElement = document.createElement('button')
+      markerElement.type = 'button'
+      markerElement.className =
+        'flex h-7 w-7 items-center justify-center rounded-full border-2 border-white shadow-md'
+      markerElement.style.backgroundColor = config.color
+      markerElement.setAttribute('aria-label', `${config.label} às ${formatTime(record.inicio)}`)
+      markerElement.textContent = formatTime(record.inicio).slice(0, 5)
+
+      new Marker({ element: markerElement })
+        .setLngLat([coordinates.lng, coordinates.lat])
+        .setPopup(
+          new Popup({ offset: 18 }).setText(
+            `${config.label} · ${formatTime(record.inicio)} · ${coordinates.lat}, ${coordinates.lng}`,
+          ),
+        )
+        .addTo(map)
+      bounds.extend([coordinates.lng, coordinates.lat])
+    })
+
+    if (points.length > 0) {
+      const mapBounds = bounds.toArray()
+      const isSinglePoint =
+        mapBounds[0][0] === mapBounds[1][0] && mapBounds[0][1] === mapBounds[1][1]
+      const fitBounds: LngLatBoundsLike = isSinglePoint
+        ? [
+            [mapBounds[0][0] - 0.005, mapBounds[0][1] - 0.005],
+            [mapBounds[1][0] + 0.005, mapBounds[1][1] + 0.005],
+          ]
+        : mapBounds
+      map.fitBounds(fitBounds, { padding: 48, maxZoom: 15, duration: 0 })
+    }
+
+    return () => map.remove()
+  }, [points])
 
   return (
-    <div className="overflow-hidden rounded-lg border border-[#E4DFD1] bg-[#203A29]">
-      <svg
-        viewBox={`0 0 ${width} ${height}`}
+    <div className="relative overflow-hidden rounded-lg border border-[#E4DFD1]">
+      <div
+        ref={mapContainer}
         role="img"
-        aria-label="Trajeto relativo dos eventos do Feller com localização registrada"
-        className="block h-auto max-h-[340px] w-full"
-      >
-        <defs>
-          <pattern id="feller-map-grid" width="36" height="36" patternUnits="userSpaceOnUse">
-            <path d="M 36 0 L 0 0 0 36" fill="none" stroke="#C7D1BC" strokeOpacity=".2" />
-          </pattern>
-        </defs>
-        <rect width={width} height={height} fill="url(#feller-map-grid)" />
-        {projected.length > 1 && (
-          <polyline
-            points={projected.map(({ x, y }) => `${x},${y}`).join(' ')}
-            fill="none"
-            stroke="#DDEBD8"
-            strokeDasharray="5 5"
-            strokeOpacity=".75"
-            strokeWidth="2"
-          />
-        )}
-        {points.map(({ record, coordinates }, index) => {
-          const point = projected[index]
-          const config = EVENT_STATUS[eventStatus(record)]
-          return (
-            <g
-              key={record.id}
-              role="img"
-              aria-label={`${config.label} às ${formatTime(record.inicio)} · latitude ${coordinates.lat}, longitude ${coordinates.lng}`}
-            >
-              <title>
-                {`${config.label} · ${formatTime(record.inicio)} · ${coordinates.lat}, ${coordinates.lng}`}
-              </title>
-              <circle
-                cx={point.x}
-                cy={point.y}
-                r="9"
-                fill={config.color}
-                stroke="white"
-                strokeWidth="2"
-              />
-              <text
-                x={point.x}
-                y={point.y - 15}
-                fill="white"
-                fontSize="11"
-                fontFamily="sans-serif"
-                textAnchor="middle"
-              >
-                {formatTime(record.inicio)}
-              </text>
-            </g>
-          )
-        })}
-      </svg>
-      <p className="border-t border-white/10 px-3 py-2 text-[10px] text-[#E9E7D8]/80">
-        Posições relativas às coordenadas reais dos registros; não representa mapa geográfico.
-      </p>
+        aria-label="Mapa geográfico dos eventos do Feller"
+        className="h-[300px] w-full"
+      />
+      {points.length === 0 && (
+        <div className="pointer-events-none absolute inset-x-4 bottom-4 rounded-md bg-white/95 px-3 py-2 text-xs text-[#5A6D5A] shadow-sm">
+          Nenhuma localização válida registrada para este dia. Os eventos aparecerão quando houver
+          coordenadas nos apontamentos.
+        </div>
+      )}
     </div>
   )
 }

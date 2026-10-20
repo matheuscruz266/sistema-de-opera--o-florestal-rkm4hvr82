@@ -41,6 +41,7 @@ import {
   Search,
 } from 'lucide-react'
 import { toast } from 'sonner'
+import { formatTempoHorasMinutos } from '@/lib/historicoOperacional'
 
 export default function RastreabilidadePage() {
   const { fazendaAtiva } = useAuth()
@@ -485,7 +486,7 @@ export default function RastreabilidadePage() {
                           {maquina?.id_maquina || 'FELLER'} ({maquina?.equipamento || 'CAT'})
                         </td>
                         <td className="py-2.5 px-4 text-right font-mono font-bold">
-                          {f.horas_trabalhadas}h
+                          {formatTempoHorasMinutos(f.tempo)}
                         </td>
                         <td className="py-2.5 px-4 text-right font-mono">
                           {f.combustivel_litros} L
@@ -543,7 +544,7 @@ export default function RastreabilidadePage() {
                           {maquina?.id_maquina || 'SKIDDER'} ({maquina?.equipamento || 'JD'})
                         </td>
                         <td className="py-2.5 px-4 text-right font-mono font-bold">
-                          {s.horas_trabalhadas}h
+                          {formatTempoHorasMinutos(s.tempo)}
                         </td>
                         <td className="py-2.5 px-4 text-right font-mono">
                           {s.combustivel_litros} L
