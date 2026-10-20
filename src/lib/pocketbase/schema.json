@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-20T23:29:39.316Z",
+  "generatedAt": "2026-10-20T23:41:40.480Z",
   "collections": [
     {
       "name": "users",
@@ -1114,13 +1114,13 @@
         {
           "name": "horas_trabalhadas",
           "type": "number",
-          "required": false,
+          "required": true,
           "system": false
         },
         {
           "name": "combustivel_litros",
           "type": "number",
-          "required": false,
+          "required": true,
           "system": false
         },
         {
@@ -1285,13 +1285,13 @@
         {
           "name": "horas_trabalhadas",
           "type": "number",
-          "required": false,
+          "required": true,
           "system": false
         },
         {
           "name": "combustivel_litros",
           "type": "number",
-          "required": false,
+          "required": true,
           "system": false
         },
         {
@@ -1476,7 +1476,7 @@
         {
           "name": "volume_sr",
           "type": "number",
-          "required": false,
+          "required": true,
           "system": false
         },
         {
@@ -1500,7 +1500,7 @@
         {
           "name": "status_baldeio",
           "type": "select",
-          "required": false,
+          "required": true,
           "system": false,
           "selectValues": [
             "em_transito",
@@ -1618,12 +1618,6 @@
           "required": false,
           "system": false,
           "collectionRef": "motivos"
-        },
-        {
-          "name": "ordem",
-          "type": "text",
-          "required": false,
-          "system": false
         }
       ],
       "indexes": [
@@ -1671,13 +1665,13 @@
         {
           "name": "volume_sr",
           "type": "number",
-          "required": false,
+          "required": true,
           "system": false
         },
         {
           "name": "volume_m3_calculado",
           "type": "number",
-          "required": false,
+          "required": true,
           "system": false
         },
         {
@@ -1701,7 +1695,7 @@
         {
           "name": "status_aceite",
           "type": "select",
-          "required": false,
+          "required": true,
           "system": false,
           "selectValues": [
             "aceito",
@@ -1837,12 +1831,6 @@
           "type": "text",
           "required": false,
           "system": false
-        },
-        {
-          "name": "ordem",
-          "type": "text",
-          "required": false,
-          "system": false
         }
       ],
       "indexes": [
@@ -1870,21 +1858,21 @@
         {
           "name": "caminhao_id",
           "type": "relation",
-          "required": false,
+          "required": true,
           "system": false,
           "collectionRef": "caminhoes"
         },
         {
           "name": "pilha_origem_id",
           "type": "relation",
-          "required": false,
+          "required": true,
           "system": false,
           "collectionRef": "pilhas"
         },
         {
           "name": "nota_fiscal",
           "type": "text",
-          "required": false,
+          "required": true,
           "system": false
         },
         {
@@ -2071,7 +2059,7 @@
         }
       ],
       "indexes": [
-        "CREATE UNIQUE INDEX idx_picador_nota ON historico_picador (nota_fiscal) WHERE nota_fiscal != ''"
+        "CREATE UNIQUE INDEX idx_picador_nota ON historico_picador (nota_fiscal)"
       ]
     },
     {
