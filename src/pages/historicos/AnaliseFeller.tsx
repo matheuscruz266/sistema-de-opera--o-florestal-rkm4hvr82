@@ -1,5 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { Map as MapLibre, Marker, NavigationControl, Popup, type LngLatBoundsLike } from 'maplibre-gl'
+import {
+  LngLatBounds,
+  Map as MapLibre,
+  Marker,
+  NavigationControl,
+  Popup,
+  setWorkerUrl,
+  type LngLatBoundsLike,
+} from 'maplibre-gl'
+import mapLibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import { Link } from 'react-router-dom'
 import {
@@ -29,6 +38,8 @@ import { apiService } from '@/services/florestalApi'
 import { HistoricoFeller } from '@/types/florestal'
 
 const ALL = '__todos__'
+
+setWorkerUrl(mapLibreWorkerUrl)
 
 const EVENT_STATUS: Record<string, { label: string; color: string }> = {
   inicio_turno: { label: 'Início de turno', color: '#2F77B5' },
@@ -777,7 +788,7 @@ function EventMap({ records }: { records: HistoricoFeller[] }) {
     })
     map.addControl(new NavigationControl({ showCompass: false }), 'top-right')
 
-    const bounds = new MapLibre.LngLatBounds()
+    const bounds = new LngLatBounds()
     points.forEach(({ record, coordinates }) => {
       const config = EVENT_STATUS[eventStatus(record)]
       const markerElement = document.createElement('button')
