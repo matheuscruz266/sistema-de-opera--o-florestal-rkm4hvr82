@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react'
 import { apiService } from '@/services/florestalApi'
 import { useAuth } from '@/context/AuthContext'
-import { InventarioPilha, Pilha, Talhao, ConversaoSrToras } from '@/types/florestal'
+import { InventarioPilha, Pilha, ConversaoSrToras } from '@/types/florestal'
 import { Card, CardHeader, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -53,7 +53,6 @@ export default function ToraCertaPage() {
 
   const [inventarios, setInventarios] = useState<InventarioPilha[]>([])
   const [pilhas, setPilhas] = useState<Pilha[]>([])
-  const [talhoes, setTalhoes] = useState<Talhao[]>([])
   const [conversaoVigente, setConversaoVigente] = useState<ConversaoSrToras | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -72,7 +71,6 @@ export default function ToraCertaPage() {
 
   // Formulário de Nova Medição
   const [pilhaId, setPilhaId] = useState('')
-  const [talhaoRefId, setTalhaoRefId] = useState('')
   const [dataInventario, setDataInventario] = useState(new Date().toISOString().split('T')[0])
   const [responsavelNome, setResponsavelNome] = useState(user?.name || '')
   const [statusRegistro, setStatusRegistro] = useState<'rascunho' | 'oficial'>('rascunho')
@@ -110,15 +108,13 @@ export default function ToraCertaPage() {
   const loadData = async () => {
     setLoading(true)
     try {
-      const [invList, pilhasList, talhoesList, conv] = await Promise.all([
+      const [invList, pilhasList, conv] = await Promise.all([
         apiService.getInventariosPilha(),
         apiService.getPilhas(fazendaAtiva?.id),
-        apiService.getTalhoes(fazendaAtiva?.id),
         apiService.getConversaoSrTorasVigente(),
       ])
       setInventarios(invList)
       setPilhas(pilhasList)
-      setTalhoes(talhoesList)
       setConversaoVigente(conv)
     } catch (err) {
       console.error(err)
@@ -185,7 +181,6 @@ export default function ToraCertaPage() {
     setItemParaCorrigir(null)
     setJustificativaCorrecao('')
     setPilhaId(pilhas.length > 0 ? pilhas[0].id : '')
-    setTalhaoRefId('')
     setDataInventario(new Date().toISOString().split('T')[0])
     setResponsavelNome(user?.name || '')
     setStatusRegistro('rascunho')
@@ -210,7 +205,6 @@ export default function ToraCertaPage() {
     setItemParaCorrigir(item)
     setJustificativaCorrecao('')
     setPilhaId(item.pilha_id)
-    setTalhaoRefId(item.talhao_referencia_id || '')
     setDataInventario(item.data_inventario)
     setResponsavelNome(user?.name || '')
     setStatusRegistro('oficial')
@@ -258,7 +252,6 @@ export default function ToraCertaPage() {
     try {
       const payload: Partial<InventarioPilha> = {
         pilha_id: pilhaId,
-        talhao_referencia_id: talhaoRefId || undefined,
         data_inventario: dataInventario,
         responsavel_nome: responsavelNome.trim(),
         metodo_escolhido: isCorrecao
@@ -623,7 +616,7 @@ export default function ToraCertaPage() {
               <span className="text-xs font-bold text-[#1A2E1A] uppercase tracking-wide block">
                 1. Identificação Operacional (Sem Digitação Livre de Pilha)
               </span>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <Label className="text-xs font-semibold">Pilha Oficial *</Label>
                   <Select value={pilhaId} onValueChange={setPilhaId} required>
@@ -635,23 +628,6 @@ export default function ToraCertaPage() {
                         <SelectItem key={p.id} value={p.id}>
                           {p.codigo} — {p.nome || p.produto} (Saldo atual: {p.volume_atual_m3 || 0}{' '}
                           m³)
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-1">
-                  <Label className="text-xs">Talhão de Referência</Label>
-                  <Select value={talhaoRefId} onValueChange={setTalhaoRefId}>
-                    <SelectTrigger className="h-9 text-xs">
-                      <SelectValue placeholder="Opcional..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="">Nenhum / Lote Misto</SelectItem>
-                      {talhoes.map((t) => (
-                        <SelectItem key={t.id} value={t.id}>
-                          {t.talhao} ({t.especie || 'Eucalipto'})
                         </SelectItem>
                       ))}
                     </SelectContent>

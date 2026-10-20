@@ -43,6 +43,11 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuth } from '@/context/AuthContext'
+import {
+  formatHorimetro,
+  formatLitros,
+  formatStatusOperacao,
+} from '@/lib/historicoOperacional'
 
 export default function HistoricoDescargaPage() {
   const { user } = useAuth()
@@ -257,6 +262,10 @@ export default function HistoricoDescargaPage() {
                   <th className="py-3 px-4">Data/Hora</th>
                   <th className="py-3 px-4">Ordem</th>
                   <th className="py-3 px-4">Veículo Baldeio</th>
+                  <th className="py-3 px-4">Máquina (P. Ordens)</th>
+                  <th className="py-3 px-4 text-right">Horímetro</th>
+                  <th className="py-3 px-4 text-right">Litragem</th>
+                  <th className="py-3 px-4">Status Operação</th>
                   <th className="py-3 px-4">Pilha Destino</th>
                   <th className="py-3 px-4 text-right">Volume SR</th>
                   <th className="py-3 px-4 text-right">Volume m³ (Calculado)</th>
@@ -278,6 +287,14 @@ export default function HistoricoDescargaPage() {
                     <td className="py-3 px-4 font-mono font-bold text-[#1A2E1A]">
                       {item.expand?.caminhao_baldeio_id?.placa_baldeio || 'Veículo'}
                     </td>
+                    <td className="py-3 px-4 font-mono font-semibold text-[#1A2E1A]">
+                      {item.expand?.maquina_id?.p_ordens || '—'}
+                    </td>
+                    <td className="py-3 px-4 text-right font-mono">
+                      {formatHorimetro(item.horimetro)}
+                    </td>
+                    <td className="py-3 px-4 text-right font-mono">{formatLitros(item)}</td>
+                    <td className="py-3 px-4 text-[#5A6D5A]">{formatStatusOperacao(item)}</td>
                     <td className="py-3 px-4 font-mono font-semibold text-[#1B5E20]">
                       {item.expand?.pilha_destino_id?.codigo || '-'}
                     </td>

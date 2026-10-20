@@ -691,7 +691,7 @@ export const GoogleSheetsD2Section: React.FC<GoogleSheetsD2SectionProps> = ({
     try {
       // 1. Salva configuração master do Google Sheets
       const payload: Partial<GoogleSheetsConfigRecord> = {
-        nome: 'D2 Picador BRF Toledo (Google Sheets)',
+        nome: 'Importador Google Sheets',
         spreadsheet_id: spreadsheetId.trim(),
         sheet_range: sheetRange.trim() || 'Historico_Feller!A:P',
         is_ativa: isAtiva,

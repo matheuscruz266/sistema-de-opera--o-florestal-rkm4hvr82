@@ -32,6 +32,11 @@ import {
 } from '@/components/ui/alert-dialog'
 import { Clock, Plus, Search, Edit2, Trash2, Loader2, Fuel, Trees } from 'lucide-react'
 import { toast } from 'sonner'
+import {
+  formatHorimetro,
+  formatLitros,
+  formatStatusOperacao,
+} from '@/lib/historicoOperacional'
 
 export default function HistoricoFellerPage() {
   const [registros, setRegistros] = useState<HistoricoFeller[]>([])
@@ -215,7 +220,9 @@ export default function HistoricoFellerPage() {
                 <tr>
                   <th className="py-3 px-4">Data Operação</th>
                   <th className="py-3 px-4">Talhão</th>
-                  <th className="py-3 px-4">Máquina Feller</th>
+                  <th className="py-3 px-4">P. Ordens</th>
+                  <th className="py-3 px-4 text-right">Horímetro</th>
+                  <th className="py-3 px-4">Status Operação</th>
                   <th className="py-3 px-4 text-right">Horas Trab.</th>
                   <th className="py-3 px-4 text-right">Diesel (Litros)</th>
                   <th className="py-3 px-4 text-right">Consumo (L/h)</th>
@@ -239,14 +246,19 @@ export default function HistoricoFellerPage() {
                         {item.expand?.talhao_id?.talhao || 'Talhão'}
                       </td>
                       <td className="py-3 px-4 text-[#1A2E1A] font-medium">
-                        {item.expand?.maquina_id?.id_maquina} -{' '}
-                        {item.expand?.maquina_id?.equipamento}
+                        {item.expand?.maquina_id?.p_ordens || '—'}
+                      </td>
+                      <td className="py-3 px-4 text-right font-mono">
+                        {formatHorimetro(item.horimetro)}
+                      </td>
+                      <td className="py-3 px-4 text-[#5A6D5A]">
+                        {formatStatusOperacao(item)}
                       </td>
                       <td className="py-3 px-4 text-right font-mono font-semibold text-[#1A2E1A]">
                         {item.horas_trabalhadas.toFixed(1)} h
                       </td>
                       <td className="py-3 px-4 text-right font-mono text-[#1A2E1A]">
-                        {item.combustivel_litros} L
+                        {formatLitros(item)}
                       </td>
                       <td className="py-3 px-4 text-right font-mono text-[#5A6D5A]">
                         {consumoLh} L/h

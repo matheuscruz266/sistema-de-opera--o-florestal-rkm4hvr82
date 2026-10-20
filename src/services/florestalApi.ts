@@ -307,7 +307,7 @@ export const apiService = {
   async getHistoricoSkidder(): Promise<HistoricoSkidder[]> {
     return await pb.collection('historico_skidder').getFullList<HistoricoSkidder>({
       sort: '-data_operacao',
-      expand: 'talhao_id,maquina_id',
+      expand: 'talhao_id,maquina_id,motivo_id',
     })
   },
   async createHistoricoSkidder(data: Partial<HistoricoSkidder>): Promise<HistoricoSkidder> {
@@ -326,7 +326,7 @@ export const apiService = {
   async getHistoricoBaldeio(): Promise<HistoricoBaldeio[]> {
     return await pb.collection('historico_baldeio').getFullList<HistoricoBaldeio>({
       sort: '-data_hora_saida',
-      expand: 'conversao_sr_id,caminhao_baldeio_id,talhao_origem_id,pilha_destino_id',
+      expand: 'conversao_sr_id,caminhao_baldeio_id,talhao_origem_id,pilha_destino_id,motivo_id',
     })
   },
   async createHistoricoBaldeio(data: Partial<HistoricoBaldeio>): Promise<HistoricoBaldeio> {
@@ -345,7 +345,7 @@ export const apiService = {
   async getHistoricoDescarga(): Promise<HistoricoDescarga[]> {
     return await pb.collection('historico_descarga').getFullList<HistoricoDescarga>({
       sort: '-data_hora_descarga',
-      expand: 'conversao_sr_id,caminhao_baldeio_id,pilha_destino_id',
+      expand: 'conversao_sr_id,caminhao_baldeio_id,pilha_destino_id,motivo_id,maquina_id',
     })
   },
   async createHistoricoDescarga(data: Partial<HistoricoDescarga>): Promise<HistoricoDescarga> {
@@ -364,7 +364,7 @@ export const apiService = {
   async getHistoricoPicador(): Promise<HistoricoPicador[]> {
     return await pb.collection('historico_picador').getFullList<HistoricoPicador>({
       sort: '-data_hora_expedicao',
-      expand: 'conversao_cavaco_id,caminhao_id,pilha_origem_id',
+      expand: 'conversao_cavaco_id,caminhao_id,pilha_origem_id,picador_maquina_id,motivo_id',
     })
   },
   async createHistoricoPicador(data: Partial<HistoricoPicador>): Promise<HistoricoPicador> {
@@ -571,7 +571,7 @@ export const apiService = {
   },
 
   // ==========================================
-  // GOOGLE SHEETS D2 (PICADOR BRF TOLEDO)
+  // GOOGLE SHEETS
   // ==========================================
 
   // Obter ou criar configuração da integração Google Sheets
@@ -633,7 +633,7 @@ export const apiService = {
         .update<GoogleSheetsConfigRecord>(atual.id, payloadLimpo)
     } else {
       return await pb.collection('google_sheets_config').create<GoogleSheetsConfigRecord>({
-        nome: dados.nome || 'D2 Picador BRF Toledo',
+        nome: dados.nome || 'Importador Google Sheets',
         spreadsheet_id: dados.spreadsheet_id || '',
         sheet_range: dados.sheet_range || 'A1:Z50',
         client_email: dados.client_email || '',
