@@ -1,3 +1,4 @@
+// Migration 0015: Torna campos operacionais opcionais para importador
 migrate(
   (app) => {
     const optionalFieldsByCollection = {

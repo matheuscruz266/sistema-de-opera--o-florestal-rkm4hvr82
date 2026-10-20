@@ -232,7 +232,9 @@ export default function ToraCertaPage() {
       return
     }
     const volFinal = isCorrecao
-      ? (volumeManual !== '' ? Number(volumeManual) : volumeOficialCalculado)
+      ? volumeManual !== ''
+        ? Number(volumeManual)
+        : volumeOficialCalculado
       : volumeOficialCalculado
 
     if (volFinal <= 0) {
@@ -253,8 +255,10 @@ export default function ToraCertaPage() {
         data_inventario: dataInventario,
         responsavel_nome: responsavelNome.trim(),
         metodo_escolhido: isCorrecao
-          ? (itemParaCorrigir?.metodo_escolhido || 'geometrico')
-          : (metodoOficialAdotado === 'amostragem' ? 'amostragem_diametros' : 'geometrico'),
+          ? itemParaCorrigir?.metodo_escolhido || 'geometrico'
+          : metodoOficialAdotado === 'amostragem'
+            ? 'amostragem_diametros'
+            : 'geometrico',
         status_registro: isCorrecao ? 'oficial' : statusRegistro,
         comp_pilha_m: compPilha !== '' ? Number(compPilha) : undefined,
         alt_media_pilha_m: altMediaPilha !== '' ? Number(altMediaPilha) : undefined,

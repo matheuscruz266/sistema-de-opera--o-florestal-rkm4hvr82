@@ -117,7 +117,7 @@ export default function MaquinasPage() {
         tipo,
         bt: bt.trim(),
         usuario_responsavel: usuarioResp.trim(),
-        fazenda_id: (fazendaId && fazendaId !== '__nenhuma__') ? fazendaId : undefined,
+        fazenda_id: fazendaId && fazendaId !== '__nenhuma__' ? fazendaId : undefined,
         status,
       }
 

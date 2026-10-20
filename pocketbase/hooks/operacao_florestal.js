@@ -1768,8 +1768,7 @@ routerAdd('POST', '/backend/v1/importador/previa', (e) => {
           idxIdMaquina >= 0 && row[idxIdMaquina] !== undefined
             ? row[idxIdMaquina].toString().trim()
             : ''
-        maquinaIdVal =
-          idMaquinaPlanilha || rawIdVal || `MQ-${spreadsheetId}-${linhaNum}`
+        maquinaIdVal = idMaquinaPlanilha || rawIdVal || `MQ-${spreadsheetId}-${linhaNum}`
       }
 
       // Validação de campos obrigatórios conforme destino
