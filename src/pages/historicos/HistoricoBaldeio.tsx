@@ -73,9 +73,8 @@ export default function HistoricoBaldeioPage() {
   const [volumeSr, setVolumeSr] = useState<number | ''>('')
   const [motorista, setMotorista] = useState('')
   const [numeroViagem, setNumeroViagem] = useState('')
-  const [statusBaldeio, setStatusBaldeio] = useState<
-    NonNullable<HistoricoBaldeio['status_baldeio']>
-  >('em_transito')
+  const [statusBaldeio, setStatusBaldeio] =
+    useState<NonNullable<HistoricoBaldeio['status_baldeio']>>('em_transito')
 
   const loadData = async () => {
     setLoading(true)

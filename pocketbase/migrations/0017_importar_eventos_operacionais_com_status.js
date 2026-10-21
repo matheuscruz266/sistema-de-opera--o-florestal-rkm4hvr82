@@ -16,11 +16,7 @@ migrate(
         'volume_sr',
         'volume_m3_calculado',
       ],
-      historico_picador: [
-        'data_hora_expedicao',
-        'volume_cavaco_m3',
-        'volume_tora_consumido_m3',
-      ],
+      historico_picador: ['data_hora_expedicao', 'volume_cavaco_m3', 'volume_tora_consumido_m3'],
     }
 
     for (const [nomeColecao, nomesCampos] of Object.entries(camposOpcionais)) {
@@ -47,11 +43,7 @@ migrate(
         'data_hora_saida',
         'status_baldeio',
       ],
-      historico_descarga: [
-        'caminhao_baldeio_id',
-        'pilha_destino_id',
-        'data_hora_descarga',
-      ],
+      historico_descarga: ['caminhao_baldeio_id', 'pilha_destino_id', 'data_hora_descarga'],
       historico_picador: ['data_hora_expedicao'],
     }
 
@@ -101,11 +93,7 @@ migrate(
         'volume_sr',
         'volume_m3_calculado',
       ],
-      historico_picador: [
-        'data_hora_expedicao',
-        'volume_cavaco_m3',
-        'volume_tora_consumido_m3',
-      ],
+      historico_picador: ['data_hora_expedicao', 'volume_cavaco_m3', 'volume_tora_consumido_m3'],
     }
 
     for (const [nomeColecao, nomesCampos] of Object.entries(camposRestaurar)) {

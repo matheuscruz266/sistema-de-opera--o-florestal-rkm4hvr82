@@ -125,9 +125,7 @@ export default function RastreabilidadePage() {
   // 3. Histórico de Baldeio originado neste talhão (Saída do talhão com volume SR e placa)
   const baldeiosTalhao = useMemo(() => {
     return baldeios.filter(
-      (b) =>
-        isStatusCarregamento(b.status_evento) &&
-        b.talhao_origem_id === talhaoSelecionadoId,
+      (b) => isStatusCarregamento(b.status_evento) && b.talhao_origem_id === talhaoSelecionadoId,
     )
   }, [baldeios, talhaoSelecionadoId])
 
@@ -204,10 +202,7 @@ export default function RastreabilidadePage() {
     const totalSrBaldeado = baldeiosTalhao.reduce((acc, b) => acc + (b.volume_sr || 0), 0)
     const totalM3Recebido = descargasTalhao
       .filter((d) => d.status_aceite === 'aceito')
-      .reduce(
-      (acc, d) => acc + (d.volume_m3_calculado || 0),
-      0,
-      )
+      .reduce((acc, d) => acc + (d.volume_m3_calculado || 0), 0)
     const totalCavacoExpedidoM3 = picadoresTalhao.reduce(
       (acc, p) => acc + (p.volume_cavaco_m3 || 0),
       0,

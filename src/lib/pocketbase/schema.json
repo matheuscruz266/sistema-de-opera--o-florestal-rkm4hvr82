@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-20T23:52:28.226Z",
+  "generatedAt": "2026-10-21T00:13:01.666Z",
   "collections": [
     {
       "name": "users",
@@ -1114,13 +1114,13 @@
         {
           "name": "horas_trabalhadas",
           "type": "number",
-          "required": true,
+          "required": false,
           "system": false
         },
         {
           "name": "combustivel_litros",
           "type": "number",
-          "required": true,
+          "required": false,
           "system": false
         },
         {
@@ -1285,13 +1285,13 @@
         {
           "name": "horas_trabalhadas",
           "type": "number",
-          "required": true,
+          "required": false,
           "system": false
         },
         {
           "name": "combustivel_litros",
           "type": "number",
-          "required": true,
+          "required": false,
           "system": false
         },
         {
@@ -1443,28 +1443,28 @@
         {
           "name": "caminhao_baldeio_id",
           "type": "relation",
-          "required": true,
+          "required": false,
           "system": false,
           "collectionRef": "caminhao_baldeio"
         },
         {
           "name": "talhao_origem_id",
           "type": "relation",
-          "required": true,
+          "required": false,
           "system": false,
           "collectionRef": "talhoes"
         },
         {
           "name": "pilha_destino_id",
           "type": "relation",
-          "required": true,
+          "required": false,
           "system": false,
           "collectionRef": "pilhas"
         },
         {
           "name": "data_hora_saida",
           "type": "text",
-          "required": true,
+          "required": false,
           "system": false
         },
         {
@@ -1476,7 +1476,7 @@
         {
           "name": "volume_sr",
           "type": "number",
-          "required": true,
+          "required": false,
           "system": false
         },
         {
@@ -1500,7 +1500,7 @@
         {
           "name": "status_baldeio",
           "type": "select",
-          "required": true,
+          "required": false,
           "system": false,
           "selectValues": [
             "em_transito",
@@ -1618,6 +1618,18 @@
           "required": false,
           "system": false,
           "collectionRef": "motivos"
+        },
+        {
+          "name": "ordem",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "sr_toras_tipo",
+          "type": "text",
+          "required": false,
+          "system": false
         }
       ],
       "indexes": [
@@ -1645,33 +1657,33 @@
         {
           "name": "caminhao_baldeio_id",
           "type": "relation",
-          "required": true,
+          "required": false,
           "system": false,
           "collectionRef": "caminhao_baldeio"
         },
         {
           "name": "pilha_destino_id",
           "type": "relation",
-          "required": true,
+          "required": false,
           "system": false,
           "collectionRef": "pilhas"
         },
         {
           "name": "data_hora_descarga",
           "type": "text",
-          "required": true,
+          "required": false,
           "system": false
         },
         {
           "name": "volume_sr",
           "type": "number",
-          "required": true,
+          "required": false,
           "system": false
         },
         {
           "name": "volume_m3_calculado",
           "type": "number",
-          "required": true,
+          "required": false,
           "system": false
         },
         {
@@ -1695,7 +1707,7 @@
         {
           "name": "status_aceite",
           "type": "select",
-          "required": true,
+          "required": false,
           "system": false,
           "selectValues": [
             "aceito",
@@ -1831,6 +1843,12 @@
           "type": "text",
           "required": false,
           "system": false
+        },
+        {
+          "name": "ordem",
+          "type": "text",
+          "required": false,
+          "system": false
         }
       ],
       "indexes": [
@@ -1858,27 +1876,27 @@
         {
           "name": "caminhao_id",
           "type": "relation",
-          "required": true,
+          "required": false,
           "system": false,
           "collectionRef": "caminhoes"
         },
         {
           "name": "pilha_origem_id",
           "type": "relation",
-          "required": true,
+          "required": false,
           "system": false,
           "collectionRef": "pilhas"
         },
         {
           "name": "nota_fiscal",
           "type": "text",
-          "required": true,
+          "required": false,
           "system": false
         },
         {
           "name": "data_hora_expedicao",
           "type": "text",
-          "required": true,
+          "required": false,
           "system": false
         },
         {
@@ -2059,7 +2077,7 @@
         }
       ],
       "indexes": [
-        "CREATE UNIQUE INDEX idx_picador_nota ON historico_picador (nota_fiscal)"
+        "CREATE UNIQUE INDEX idx_picador_nota ON historico_picador (nota_fiscal) WHERE nota_fiscal != ''"
       ]
     },
     {
