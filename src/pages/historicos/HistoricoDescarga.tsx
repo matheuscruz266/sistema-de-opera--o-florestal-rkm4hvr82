@@ -58,7 +58,7 @@ export default function HistoricoDescargaPage() {
   const [registros, setRegistros] = useState<HistoricoDescarga[]>([])
   const [caminhoes, setCaminhoes] = useState<CaminhaoBaldeio[]>([])
   const [pilhas, setPilhas] = useState<Pilha[]>([])
-  const [conversaoVigente, setConversaoVigente] = useState<ConversaoSrToras | null>(null)
+  const [conversoesSrToras, setConversoesSrToras] = useState<ConversaoSrToras[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
 
@@ -72,7 +72,7 @@ export default function HistoricoDescargaPage() {
   const [caminhaoBaldeioId, setCaminhaoBaldeioId] = useState('')
   const [pilhaDestinoId, setPilhaDestinoId] = useState('')
   const [dataHoraDescarga, setDataHoraDescarga] = useState(new Date().toISOString().slice(0, 16))
-  const [volumeSr, setVolumeSr] = useState<number | ''>('')
+  const [srTorasTipo, setSrTorasTipo] = useState('')
   const [pesoBrutoT, setPesoBrutoT] = useState<number | ''>('')
   const [pesoTaraT, setPesoTaraT] = useState<number | ''>('')
   const [statusAceite, setStatusAceite] = useState<HistoricoDescarga['status_aceite']>('aceito')
@@ -82,16 +82,16 @@ export default function HistoricoDescargaPage() {
   const loadData = async () => {
     setLoading(true)
     try {
-      const [histList, camList, pilList, conv] = await Promise.all([
+      const [histList, camList, pilList, conversoes] = await Promise.all([
         apiService.getHistoricoDescarga(),
         apiService.getCaminhoesBaldeio(),
         apiService.getPilhas(),
-        apiService.getConversaoSrTorasVigente(),
+        apiService.getConversoesSrToras(),
       ])
       setRegistros(histList)
       setCaminhoes(camList)
       setPilhas(pilList)
-      setConversaoVigente(conv)
+      setConversoesSrToras(conversoes)
     } catch (err) {
       console.error(err)
       toast.error('Erro ao carregar histórico de descargas')
@@ -104,22 +104,25 @@ export default function HistoricoDescargaPage() {
     loadData()
   }, [])
 
-  const fatorConversao = conversaoVigente?.fator_m3_sr || 0.84
-  const volumeM3Calculado =
-    volumeSr !== '' ? Number((Number(volumeSr) * fatorConversao).toFixed(2)) : 0
+  const conversoesAtivas = conversoesSrToras.filter((conversao) => conversao.is_vigente)
+  const conversaoSelecionada = conversoesAtivas.find(
+    (conversao) =>
+      conversao.versao.trim().toLocaleLowerCase() === srTorasTipo.trim().toLocaleLowerCase(),
+  )
+  const volumeM3Calculado = conversaoSelecionada?.fator_m3_sr || 0
   const pesoLiquidoT =
     pesoBrutoT !== '' && pesoTaraT !== ''
       ? Math.max(0, Number((Number(pesoBrutoT) - Number(pesoTaraT)).toFixed(2)))
-      : undefined
+      : conversaoSelecionada?.fator_t_m3
 
   const handleOpenCreate = () => {
     setEditingItem(null)
     setCaminhaoBaldeioId(caminhoes[0]?.id || '')
     setPilhaDestinoId(pilhas[0]?.id || '')
     setDataHoraDescarga(new Date().toISOString().slice(0, 16))
-    setVolumeSr(42)
-    setPesoBrutoT(48)
-    setPesoTaraT(15)
+    setSrTorasTipo('')
+    setPesoBrutoT('')
+    setPesoTaraT('')
     setStatusAceite('aceito')
     setMotivoRejeicao('')
     setConferenteNome(user?.name || '')
@@ -131,7 +134,7 @@ export default function HistoricoDescargaPage() {
     setCaminhaoBaldeioId(item.caminhao_baldeio_id || '')
     setPilhaDestinoId(item.pilha_destino_id || '')
     setDataHoraDescarga(item.data_hora_descarga || '')
-    setVolumeSr(item.volume_sr ?? '')
+    setSrTorasTipo(item.sr_toras_tipo || item.expand?.conversao_sr_id?.versao || '')
     setPesoBrutoT(item.peso_bruto_t ?? '')
     setPesoTaraT(item.peso_tara_t ?? '')
     setStatusAceite(item.status_aceite)
@@ -142,8 +145,14 @@ export default function HistoricoDescargaPage() {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!caminhaoBaldeioId || !pilhaDestinoId || volumeSr === '') {
-      toast.error('Preencha os campos obrigatórios.')
+    if (
+      !caminhaoBaldeioId ||
+      !pilhaDestinoId ||
+      !conversaoSelecionada ||
+      conversaoSelecionada.fator_m3_sr <= 0 ||
+      conversaoSelecionada.fator_t_m3 <= 0
+    ) {
+      toast.error('Selecione um identificador SR_Toras com m³ e toneladas positivos.')
       return
     }
 
@@ -151,11 +160,11 @@ export default function HistoricoDescargaPage() {
     try {
       const payload: Partial<HistoricoDescarga> = {
         status_evento: 'Descarga',
-        conversao_sr_id: conversaoVigente?.id,
+        conversao_sr_id: conversaoSelecionada.id,
+        sr_toras_tipo: conversaoSelecionada.versao,
         caminhao_baldeio_id: caminhaoBaldeioId,
         pilha_destino_id: pilhaDestinoId,
         data_hora_descarga: dataHoraDescarga,
-        volume_sr: Number(volumeSr),
         volume_m3_calculado: volumeM3Calculado,
         peso_bruto_t: pesoBrutoT === '' ? undefined : Number(pesoBrutoT),
         peso_tara_t: pesoTaraT === '' ? undefined : Number(pesoTaraT),
@@ -430,36 +439,46 @@ export default function HistoricoDescargaPage() {
               </Select>
             </div>
 
-            {/* Volume SR recebido */}
+            {/* Identificador SR_Toras e valores atribuídos */}
             <div className="p-3 bg-neutral-50 rounded-lg border border-[#DDE4DE] space-y-2">
-              <div className="flex items-center justify-between">
-                <Label className="text-xs font-semibold text-[#1A2E1A]">
-                  Volume Recebido em SR *
-                </Label>
-                <span className="text-[11px] text-[#5A6D5A]">
-                  Fator vigente: {fatorConversao} m³/SR
-                </span>
-              </div>
-              <div className="grid grid-cols-2 gap-3 items-center">
-                <Input
-                  type="number"
-                  step="0.1"
-                  placeholder="42"
-                  value={volumeSr}
-                  onChange={(e) => setVolumeSr(e.target.value === '' ? '' : Number(e.target.value))}
-                  className="h-9 font-mono font-bold"
-                  required
-                />
-                <div className="text-xs font-mono bg-white p-2 rounded border border-[#DDE4DE] text-right text-emerald-800">
-                  = <strong>{volumeM3Calculado.toFixed(2)}</strong> m³ entrada
+              <Label className="text-xs font-semibold text-[#1A2E1A]">
+                Identificador SR_Toras *
+              </Label>
+              <Select value={srTorasTipo} onValueChange={setSrTorasTipo}>
+                <SelectTrigger className="h-9">
+                  <SelectValue placeholder="Selecione o tipo cadastrado" />
+                </SelectTrigger>
+                <SelectContent>
+                  {conversoesAtivas.map((conversao) => (
+                    <SelectItem key={conversao.id} value={conversao.versao}>
+                      {conversao.versao}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <div className="grid grid-cols-2 gap-3 text-xs font-mono">
+                <div className="bg-white p-2 rounded border border-[#DDE4DE]">
+                  <span className="text-[#5A6D5A]">Volume atribuído</span>
+                  <div className="font-bold text-[#1A2E1A]">{volumeM3Calculado.toFixed(2)} m³</div>
+                </div>
+                <div className="bg-white p-2 rounded border border-[#DDE4DE]">
+                  <span className="text-[#5A6D5A]">Toneladas atribuídas</span>
+                  <div className="font-bold text-[#1A2E1A]">
+                    {(conversaoSelecionada?.fator_t_m3 || 0).toFixed(2)} t
+                  </div>
                 </div>
               </div>
+              {conversoesAtivas.length === 0 && (
+                <p className="text-[11px] text-amber-700">
+                  Cadastre um identificador SR_Toras e seus valores antes de registrar a descarga.
+                </p>
+              )}
             </div>
 
-            {/* Pesagem opcional (informativa de calibração dimensional) */}
+            {/* Pesagem opcional; sem pesagem, usa as toneladas atribuídas ao tipo */}
             <div className="grid grid-cols-3 gap-2">
               <div className="space-y-1">
-                <Label className="text-[11px]">Peso Bruto (t)</Label>
+                <Label className="text-[11px]">Peso Bruto medido (t)</Label>
                 <Input
                   type="number"
                   step="0.1"
@@ -472,7 +491,7 @@ export default function HistoricoDescargaPage() {
                 />
               </div>
               <div className="space-y-1">
-                <Label className="text-[11px]">Tara (t)</Label>
+                <Label className="text-[11px]">Tara medida (t)</Label>
                 <Input
                   type="number"
                   step="0.1"
@@ -485,7 +504,7 @@ export default function HistoricoDescargaPage() {
                 />
               </div>
               <div className="space-y-1">
-                <Label className="text-[11px]">Líquido (t)</Label>
+                <Label className="text-[11px]">Peso líquido / atribuído (t)</Label>
                 <div className="h-9 flex items-center justify-end px-2 font-mono text-xs bg-neutral-100 rounded border border-[#DDE4DE]">
                   {pesoLiquidoT !== undefined ? `${pesoLiquidoT.toFixed(1)} t` : '-'}
                 </div>

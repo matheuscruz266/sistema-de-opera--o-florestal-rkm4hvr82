@@ -159,10 +159,13 @@ export interface Trabalho {
 
 export interface ConversaoSrToras {
   id: string
+  /** Legacy database column now stores the source identifier, e.g. Bitrem or Tritrem. */
   versao: string
   vigencia_inicio: string
   vigencia_fim?: string
+  /** Legacy database column stores the assigned m³ per operational event. */
   fator_m3_sr: number
+  /** Legacy database column stores assigned tonnes per operational event. */
   fator_t_m3: number
   metodo?: string
   is_vigente: boolean
