@@ -54,7 +54,7 @@ export default function HistoricoBaldeioPage() {
   const [caminhoes, setCaminhoes] = useState<CaminhaoBaldeio[]>([])
   const [talhoes, setTalhoes] = useState<Talhao[]>([])
   const [pilhas, setPilhas] = useState<Pilha[]>([])
-  const [conversaoVigente, setConversaoVigente] = useState<ConversaoSrToras | null>(null)
+  const [conversoesSrToras, setConversoesSrToras] = useState<ConversaoSrToras[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
 
@@ -70,28 +70,27 @@ export default function HistoricoBaldeioPage() {
   const [pilhaDestinoId, setPilhaDestinoId] = useState('')
   const [dataHoraSaida, setDataHoraSaida] = useState(new Date().toISOString().slice(0, 16))
   const [dataHoraChegada, setDataHoraChegada] = useState('')
-  const [volumeSr, setVolumeSr] = useState<number | ''>('')
+  const [srTorasTipo, setSrTorasTipo] = useState('')
   const [motorista, setMotorista] = useState('')
   const [numeroViagem, setNumeroViagem] = useState('')
-  const [statusBaldeio, setStatusBaldeio] = useState<
-    NonNullable<HistoricoBaldeio['status_baldeio']>
-  >('em_transito')
+  const [statusBaldeio, setStatusBaldeio] =
+    useState<NonNullable<HistoricoBaldeio['status_baldeio']>>('em_transito')
 
   const loadData = async () => {
     setLoading(true)
     try {
-      const [histList, camList, talList, pilList, conv] = await Promise.all([
+      const [histList, camList, talList, pilList, conversoes] = await Promise.all([
         apiService.getHistoricoBaldeio(),
         apiService.getCaminhoesBaldeio(),
         apiService.getTalhoes(),
         apiService.getPilhas(),
-        apiService.getConversaoSrTorasVigente(),
+        apiService.getConversoesSrToras(),
       ])
       setRegistros(histList)
       setCaminhoes(camList)
       setTalhoes(talList)
       setPilhas(pilList)
-      setConversaoVigente(conv)
+      setConversoesSrToras(conversoes)
     } catch (err) {
       console.error(err)
       toast.error('Erro ao carregar histórico de baldeio')
@@ -104,10 +103,14 @@ export default function HistoricoBaldeioPage() {
     loadData()
   }, [])
 
-  // Cálculo de volume m³ em tempo real
-  const fatorConversao = conversaoVigente?.fator_m3_sr || 0.84
+  const conversoesAtivas = conversoesSrToras.filter((conversao) => conversao.is_vigente)
+  const conversaoSelecionada = conversoesAtivas.find(
+    (conversao) =>
+      conversao.versao.trim().toLocaleLowerCase() === srTorasTipo.trim().toLocaleLowerCase(),
+  )
+  const eventoBaldeioCarregamento = !editingItem || isStatusCarregamento(editingItem.status_evento)
   const volumeM3Estimado =
-    volumeSr !== '' ? Number((Number(volumeSr) * fatorConversao).toFixed(2)) : 0
+    eventoBaldeioCarregamento && conversaoSelecionada ? conversaoSelecionada.fator_m3_sr : 0
 
   const handleOpenCreate = () => {
     setEditingItem(null)
@@ -116,7 +119,7 @@ export default function HistoricoBaldeioPage() {
     setPilhaDestinoId(pilhas[0]?.id || '')
     setDataHoraSaida(new Date().toISOString().slice(0, 16))
     setDataHoraChegada('')
-    setVolumeSr(40)
+    setSrTorasTipo('')
     setMotorista('')
     setNumeroViagem(`VG-${String(registros.length + 1).padStart(3, '0')}`)
     setStatusBaldeio('em_transito')
@@ -130,7 +133,7 @@ export default function HistoricoBaldeioPage() {
     setPilhaDestinoId(item.pilha_destino_id || '')
     setDataHoraSaida(item.data_hora_saida || '')
     setDataHoraChegada(item.data_hora_chegada || '')
-    setVolumeSr(item.volume_sr ?? '')
+    setSrTorasTipo(item.sr_toras_tipo || item.expand?.conversao_sr_id?.versao || '')
     setMotorista(item.motorista || '')
     setNumeroViagem(item.numero_viagem || '')
     setStatusBaldeio(item.status_baldeio || 'em_transito')
@@ -139,9 +142,17 @@ export default function HistoricoBaldeioPage() {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!caminhaoBaldeioId || !talhaoOrigemId || !pilhaDestinoId || volumeSr === '') {
+    if (
+      !caminhaoBaldeioId ||
+      !talhaoOrigemId ||
+      !pilhaDestinoId ||
+      (eventoBaldeioCarregamento &&
+        (!conversaoSelecionada ||
+          conversaoSelecionada.fator_m3_sr <= 0 ||
+          conversaoSelecionada.fator_t_m3 <= 0))
+    ) {
       toast.error(
-        'Preencha os campos obrigatórios (veículo, talhão de origem, pilha de destino e volume SR).',
+        'Selecione um identificador SR_Toras com atribuição vigente e preencha os dados da viagem.',
       )
       return
     }
@@ -150,13 +161,13 @@ export default function HistoricoBaldeioPage() {
     try {
       const payload: Partial<HistoricoBaldeio> = {
         status_evento: editingItem?.status_evento || 'Carregamento',
-        conversao_sr_id: conversaoVigente?.id,
+        conversao_sr_id: conversaoSelecionada?.id || '',
         caminhao_baldeio_id: caminhaoBaldeioId,
         talhao_origem_id: talhaoOrigemId,
         pilha_destino_id: pilhaDestinoId,
         data_hora_saida: dataHoraSaida,
         data_hora_chegada: dataHoraChegada || undefined,
-        volume_sr: Number(volumeSr),
+        sr_toras_tipo: conversaoSelecionada?.versao || '',
         volume_m3_estimado: volumeM3Estimado,
         motorista: motorista.trim(),
         numero_viagem: numeroViagem.trim(),
@@ -467,30 +478,40 @@ export default function HistoricoBaldeioPage() {
               </div>
             </div>
 
-            {/* Volume SR e Conversão Estimada */}
+            {/* Identificador SR_Toras e valores atribuídos */}
             <div className="p-3 bg-neutral-50 rounded-lg border border-[#DDE4DE] space-y-2">
-              <div className="flex items-center justify-between">
-                <Label className="text-xs font-semibold text-[#1A2E1A]">
-                  Volume em SR (Sólido Real) *
-                </Label>
-                <span className="text-[11px] text-[#5A6D5A]">
-                  Fator vigente: {fatorConversao} m³/SR
-                </span>
-              </div>
-              <div className="grid grid-cols-2 gap-3 items-center">
-                <Input
-                  type="number"
-                  step="0.1"
-                  placeholder="40"
-                  value={volumeSr}
-                  onChange={(e) => setVolumeSr(e.target.value === '' ? '' : Number(e.target.value))}
-                  className="h-9 font-mono font-bold"
-                  required
-                />
-                <div className="text-xs font-mono bg-white p-2 rounded border border-[#DDE4DE] text-right">
-                  ≈ <strong>{volumeM3Estimado.toFixed(2)}</strong> m³ estim.
+              <Label className="text-xs font-semibold text-[#1A2E1A]">
+                Identificador SR_Toras *
+              </Label>
+              <Select value={srTorasTipo} onValueChange={setSrTorasTipo}>
+                <SelectTrigger className="h-9">
+                  <SelectValue placeholder="Selecione o tipo cadastrado" />
+                </SelectTrigger>
+                <SelectContent>
+                  {conversoesAtivas.map((conversao) => (
+                    <SelectItem key={conversao.id} value={conversao.versao}>
+                      {conversao.versao}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <div className="grid grid-cols-2 gap-3 text-xs font-mono">
+                <div className="bg-white p-2 rounded border border-[#DDE4DE]">
+                  <span className="text-[#5A6D5A]">Volume atribuído</span>
+                  <div className="font-bold text-[#1A2E1A]">{volumeM3Estimado.toFixed(2)} m³</div>
+                </div>
+                <div className="bg-white p-2 rounded border border-[#DDE4DE]">
+                  <span className="text-[#5A6D5A]">Toneladas atribuídas</span>
+                  <div className="font-bold text-[#1A2E1A]">
+                    {(conversaoSelecionada?.fator_t_m3 || 0).toFixed(2)} t
+                  </div>
                 </div>
               </div>
+              {conversoesAtivas.length === 0 && (
+                <p className="text-[11px] text-amber-700">
+                  Cadastre um identificador SR_Toras e seus valores antes de registrar a viagem.
+                </p>
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-3">

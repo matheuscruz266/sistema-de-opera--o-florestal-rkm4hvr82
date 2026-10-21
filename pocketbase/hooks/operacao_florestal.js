@@ -2202,18 +2202,36 @@ routerAdd('POST', '/backend/v1/importador/executar', (e) => {
     } catch (_) {}
   }
 
-  // Pre-carrega conversão padrão de Toras e Cavaco vigentes
-  let defaultConvTorasId = ''
-  try {
-    const cvt = e.app.findRecordsByFilter(
-      'conversao_sr_toras',
-      'is_vigente = true',
-      '-created',
-      1,
-      0,
-    )
-    if (cvt.length > 0) defaultConvTorasId = cvt[0].id
-  } catch (_) {}
+  // SR_Toras stores the source identifier in "versao"; active mappings are per identifier.
+  const conversoesTorasPorTipo = {}
+  const conversoesTorasAmbiguas = {}
+  const conversoesTorasAtivas = e.app.findRecordsByFilter(
+    'conversao_sr_toras',
+    'is_vigente = true',
+    '-created',
+    5000,
+    0,
+  )
+  for (let i = 0; i < conversoesTorasAtivas.length; i++) {
+    const conversao = conversoesTorasAtivas[i]
+    const identificador = (conversao.getString('versao') || '').trim().toLowerCase()
+    if (!identificador) continue
+    if (conversoesTorasPorTipo[identificador]) {
+      conversoesTorasAmbiguas[identificador] = true
+      delete conversoesTorasPorTipo[identificador]
+    } else if (!conversoesTorasAmbiguas[identificador]) {
+      conversoesTorasPorTipo[identificador] = conversao
+    }
+  }
+  const obterConversaoSrToras = (identificador) => {
+    const chave = (identificador || '').toString().trim().toLowerCase()
+    if (conversoesTorasAmbiguas[chave]) {
+      throw new Error(
+        `Há mais de uma atribuição SR_Toras vigente para "${identificador}".`,
+      )
+    }
+    return conversoesTorasPorTipo[chave] || null
+  }
 
   // Ordena bases: Cadastros primeiro, depois Históricos
   const basesOrdenadas = basesConfigs
@@ -3506,7 +3524,6 @@ routerAdd('POST', '/backend/v1/importador/executar', (e) => {
           if (dados.fim) rec.set('fim', dados.fim.toString())
           if (dados.ordem) rec.set('ordem', dados.ordem.toString().trim())
 
-          if (defaultConvTorasId) rec.set('conversao_sr_id', defaultConvTorasId)
           const dataHoraSaida = dados.data_hora_saida || dados.data_hora || dados.inicio || dados.data
           if (dataHoraSaida) rec.set('data_hora_saida', normalizarDataHoraSheets(dataHoraSaida))
           if (dados.data_hora_chegada || dados.fim)
@@ -3525,6 +3542,10 @@ routerAdd('POST', '/backend/v1/importador/executar', (e) => {
               ? srTorasBaldeio
               : ''
           if (tipoSrTorasBaldeio) rec.set('sr_toras_tipo', tipoSrTorasBaldeio)
+          const conversaoTorasBaldeio = tipoSrTorasBaldeio
+            ? obterConversaoSrToras(tipoSrTorasBaldeio)
+            : null
+          rec.set('conversao_sr_id', conversaoTorasBaldeio ? conversaoTorasBaldeio.id : '')
           const valoresVolumeSrBaldeio = [
             dados.volume_sr,
             dados.volume,
@@ -3536,16 +3557,21 @@ routerAdd('POST', '/backend/v1/importador/executar', (e) => {
           const volumeSrBaldeio = valoresVolumeSrBaldeio.find(Number.isFinite)
           if (Number.isFinite(volumeSrBaldeio)) {
             rec.set('volume_sr', volumeSrBaldeio)
-            if (dados.volume_m3_estimado != null && dados.volume_m3_estimado !== '') {
-              rec.set('volume_m3_estimado', normalizarNumero(dados.volume_m3_estimado))
-            } else if (defaultConvTorasId) {
-              const conversaoToras = e.app.findRecordById('conversao_sr_toras', defaultConvTorasId)
-              const fatorM3Sr = conversaoToras.getFloat('fator_m3_sr')
-              if (Number.isFinite(fatorM3Sr) && fatorM3Sr > 0) {
-                rec.set('volume_m3_estimado', Number((volumeSrBaldeio * fatorM3Sr).toFixed(2)))
-              }
-            }
           }
+          const eventoBaldeioCarregamento =
+            statusEventoNormalizado(dados.status_evento) === 'carregamento'
+          const volumeM3BaldeioInformado = dados.volume_m3_estimado ?? dados.volume_m3
+          const volumeM3Baldeio = eventoBaldeioCarregamento
+            ? volumeM3BaldeioInformado != null && String(volumeM3BaldeioInformado).trim() !== ''
+              ? normalizarNumero(volumeM3BaldeioInformado, NaN)
+              : conversaoTorasBaldeio
+                ? conversaoTorasBaldeio.getFloat('fator_m3_sr')
+                : NaN
+            : NaN
+          rec.set(
+            'volume_m3_estimado',
+            Number.isFinite(volumeM3Baldeio) && volumeM3Baldeio > 0 ? volumeM3Baldeio : 0,
+          )
           if (dados.motorista) rec.set('motorista', dados.motorista.toString())
           if (dados.numero_viagem) rec.set('numero_viagem', dados.numero_viagem.toString())
           if (['em_transito', 'concluido', 'cancelado'].includes(dados.status_baldeio))
@@ -3601,7 +3627,6 @@ routerAdd('POST', '/backend/v1/importador/executar', (e) => {
             rec.set('sr_toras_tipo', dados.sr_toras.toString().trim())
           }
 
-          if (defaultConvTorasId) rec.set('conversao_sr_id', defaultConvTorasId)
           const dataHoraDescarga =
             dados.data_hora_descarga || dados.data_hora || dados.inicio || dados.data
           if (dataHoraDescarga)
@@ -3617,6 +3642,10 @@ routerAdd('POST', '/backend/v1/importador/executar', (e) => {
               ? srTorasDescarga
               : ''
           if (tipoSrTorasDescarga) rec.set('sr_toras_tipo', tipoSrTorasDescarga)
+          const conversaoTorasDescarga = tipoSrTorasDescarga
+            ? obterConversaoSrToras(tipoSrTorasDescarga)
+            : null
+          rec.set('conversao_sr_id', conversaoTorasDescarga ? conversaoTorasDescarga.id : '')
           const valoresVolumeSrDescarga = [
             dados.volume_sr,
             dados.sr_toras,
@@ -3625,38 +3654,47 @@ routerAdd('POST', '/backend/v1/importador/executar', (e) => {
             .filter((valor) => valor != null && String(valor).trim() !== '')
             .map((valor) => Number(String(valor).replace(',', '.')))
           const volumeSrDescarga = valoresVolumeSrDescarga.find(Number.isFinite)
-          let volumeM3Descarga = NaN
           if (Number.isFinite(volumeSrDescarga)) {
             rec.set('volume_sr', volumeSrDescarga)
-            const volumeM3Informado = dados.volume_m3_calculado ?? dados.volume_m3
-            if (volumeM3Informado != null && String(volumeM3Informado).trim() !== '') {
-              volumeM3Descarga = normalizarNumero(volumeM3Informado, NaN)
-            } else if (defaultConvTorasId) {
-              const conversaoToras = e.app.findRecordById('conversao_sr_toras', defaultConvTorasId)
-              const fatorM3Sr = conversaoToras.getFloat('fator_m3_sr')
-              if (Number.isFinite(fatorM3Sr) && fatorM3Sr > 0) {
-                volumeM3Descarga = Number((volumeSrDescarga * fatorM3Sr).toFixed(2))
-              }
-            }
-            if (Number.isFinite(volumeM3Descarga))
-              rec.set('volume_m3_calculado', volumeM3Descarga)
           }
+          const statusEventoDescarga = isStatusEventoDescarga(dados.status_evento)
+          const volumeM3Informado = dados.volume_m3_calculado ?? dados.volume_m3
+          const volumeM3Descarga = statusEventoDescarga
+            ? volumeM3Informado != null && String(volumeM3Informado).trim() !== ''
+              ? normalizarNumero(volumeM3Informado, NaN)
+              : conversaoTorasDescarga
+                ? conversaoTorasDescarga.getFloat('fator_m3_sr')
+                : NaN
+            : NaN
+          rec.set(
+            'volume_m3_calculado',
+            Number.isFinite(volumeM3Descarga) && volumeM3Descarga > 0 ? volumeM3Descarga : 0,
+          )
           if (dados.peso_bruto_t != null)
             rec.set('peso_bruto_t', parseFloat(String(dados.peso_bruto_t).replace(',', '.')) || 0)
           if (dados.peso_tara_t != null)
             rec.set('peso_tara_t', parseFloat(String(dados.peso_tara_t).replace(',', '.')) || 0)
-          if (dados.peso_liquido_t != null)
+          if (statusEventoDescarga && dados.peso_liquido_t != null)
             rec.set(
               'peso_liquido_t',
               parseFloat(String(dados.peso_liquido_t).replace(',', '.')) || 0,
             )
+          else if (statusEventoDescarga && conversaoTorasDescarga) {
+            const toneladasAtribuidas = conversaoTorasDescarga.getFloat('fator_t_m3')
+            rec.set(
+              'peso_liquido_t',
+              Number.isFinite(toneladasAtribuidas) && toneladasAtribuidas > 0
+                ? toneladasAtribuidas
+                : 0,
+            )
+          } else {
+            rec.set('peso_liquido_t', 0)
+          }
           const statusAceiteInformado = statusEventoNormalizado(dados.status_aceite)
-          const statusEventoDescarga = isStatusEventoDescarga(dados.status_evento)
           const descargaComDadosDeEstoque =
             statusEventoDescarga &&
             Boolean(cbId) &&
             Boolean(plDest) &&
-            volumeSrDescarga > 0 &&
             volumeM3Descarga > 0
           const statusAceiteValido = ['aceito', 'rejeitado', 'pendente'].includes(
             statusAceiteInformado,

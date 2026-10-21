@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react'
 import { apiService } from '@/services/florestalApi'
 import { useAuth } from '@/context/AuthContext'
-import { InventarioPilha, Pilha, ConversaoSrToras } from '@/types/florestal'
+import { InventarioPilha, Pilha } from '@/types/florestal'
 import { Card, CardHeader, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -53,7 +53,6 @@ export default function ToraCertaPage() {
 
   const [inventarios, setInventarios] = useState<InventarioPilha[]>([])
   const [pilhas, setPilhas] = useState<Pilha[]>([])
-  const [conversaoVigente, setConversaoVigente] = useState<ConversaoSrToras | null>(null)
   const [loading, setLoading] = useState(true)
 
   // Filtros
@@ -101,21 +100,19 @@ export default function ToraCertaPage() {
   const [justificativaCorrecao, setJustificativaCorrecao] = useState('')
 
   // Conversor Auxiliar de Peso (ToraCerta não alimenta m³ direto por peso!)
-  const [pesoEntradaT, setPesoEntradaT] = useState<number | ''>(35)
-  const [fatorDensidadeValidado, setFatorDensidadeValidado] = useState<number | ''>(0.95)
+  const [pesoEntradaT, setPesoEntradaT] = useState<number | ''>('')
+  const [fatorDensidadeValidado, setFatorDensidadeValidado] = useState<number | ''>('')
   const [m3CalculadoConversor, setM3CalculadoConversor] = useState<number | null>(null)
 
   const loadData = async () => {
     setLoading(true)
     try {
-      const [invList, pilhasList, conv] = await Promise.all([
+      const [invList, pilhasList] = await Promise.all([
         apiService.getInventariosPilha(),
         apiService.getPilhas(fazendaAtiva?.id),
-        apiService.getConversaoSrTorasVigente(),
       ])
       setInventarios(invList)
       setPilhas(pilhasList)
-      setConversaoVigente(conv)
     } catch (err) {
       console.error(err)
       toast.error('Erro ao carregar dados do Inventário ToraCerta')
@@ -1061,11 +1058,12 @@ export default function ToraCertaPage() {
               </div>
 
               <div className="space-y-1">
-                <Label className="text-xs font-semibold">Densidade Validada (t/m³) *</Label>
+                <Label className="text-xs font-semibold">Densidade informada (t/m³) *</Label>
                 <Input
                   type="number"
                   step="0.0001"
-                  placeholder="0.95"
+                  min="0.0001"
+                  placeholder="Informe para esta simulação"
                   value={fatorDensidadeValidado}
                   onChange={(e) =>
                     setFatorDensidadeValidado(e.target.value === '' ? '' : Number(e.target.value))
@@ -1073,7 +1071,7 @@ export default function ToraCertaPage() {
                   className="h-9 font-mono font-bold"
                 />
                 <span className="text-[10px] text-[#5A6D5A] block">
-                  Vigente: {conversaoVigente?.fator_t_m3 ?? 0.95} t/m³
+                  Informe a densidade usada nesta simulação; não é carregada da atribuição SR_Toras.
                 </span>
               </div>
             </div>

@@ -217,29 +217,39 @@ export const apiService = {
       .collection('conversao_sr_toras')
       .getFullList<ConversaoSrToras>({ sort: '-created' })
   },
-  async getConversaoSrTorasVigente(): Promise<ConversaoSrToras | null> {
-    const res = await pb.collection('conversao_sr_toras').getList<ConversaoSrToras>(1, 1, {
-      filter: 'is_vigente = true',
-      sort: '-created',
-    })
-    return res.items[0] || null
-  },
   async createConversaoSrToras(data: Partial<ConversaoSrToras>): Promise<ConversaoSrToras> {
+    const identificador = data.versao?.trim()
+    if (!identificador) {
+      throw new Error('Informe o identificador SR_Toras.')
+    }
+
     if (data.is_vigente) {
-      // Desativa anteriores
       const all = await this.getConversoesSrToras()
       for (const c of all) {
-        if (c.is_vigente) {
+        if (
+          c.is_vigente &&
+          c.versao.trim().toLocaleLowerCase() === identificador.toLocaleLowerCase()
+        ) {
           await pb.collection('conversao_sr_toras').update(c.id, { is_vigente: false })
         }
       }
     }
-    return await pb.collection('conversao_sr_toras').create<ConversaoSrToras>(data)
+    return await pb
+      .collection('conversao_sr_toras')
+      .create<ConversaoSrToras>({ ...data, versao: identificador })
   },
   async setConversaoSrTorasVigente(id: string): Promise<void> {
     const all = await this.getConversoesSrToras()
+    const target = all.find((conversao) => conversao.id === id)
+    if (!target) {
+      throw new Error('Atribuição SR_Toras não encontrada.')
+    }
+
+    const chave = target.versao.trim().toLocaleLowerCase()
     for (const c of all) {
-      await pb.collection('conversao_sr_toras').update(c.id, { is_vigente: c.id === id })
+      if (c.versao.trim().toLocaleLowerCase() === chave) {
+        await pb.collection('conversao_sr_toras').update(c.id, { is_vigente: c.id === id })
+      }
     }
   },
 
